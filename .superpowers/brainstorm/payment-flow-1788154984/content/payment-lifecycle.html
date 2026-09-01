@@ -1,0 +1,64 @@
+<h2>Proposed payment lifecycle</h2>
+<p class="subtitle">Confirm whether each installment should require approval before it counts as received.</p>
+
+<div class="section">
+  <div class="viz-row" style="align-items:stretch; justify-content:center">
+    <div class="card" style="flex:1; min-width:150px">
+      <span class="label">1 · Amount due</span>
+      <h3>Payment Pending</h3>
+      <p>Admin or Super Admin opens a customer balance and clicks <strong>Paid</strong>.</p>
+    </div>
+    <div aria-hidden="true" style="align-self:center">→</div>
+    <div class="card" style="flex:1; min-width:150px">
+      <span class="label">2 · Record payment</span>
+      <h3>Single or Installment</h3>
+      <p>Enter confirmed amount. Remaining balance is calculated from payment history.</p>
+    </div>
+    <div aria-hidden="true" style="align-self:center">→</div>
+    <div class="card" style="flex:1; min-width:150px">
+      <span class="label">3 · Await review</span>
+      <h3>Payment Approval</h3>
+      <p>Each submitted payment appears as a separate approval row.</p>
+    </div>
+    <div aria-hidden="true" style="align-self:center">→</div>
+    <div class="card" style="flex:1; min-width:150px">
+      <span class="label">4 · Approved</span>
+      <h3>Received History</h3>
+      <p>Approved installment is added to paid total. Fully paid when balance reaches zero.</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Paid dialog · Example renewal amount ₹2,000</div>
+  <div class="mockup-body">
+    <div class="viz-grid">
+      <div class="card viz-stat"><span class="text-muted">Total due</span><div class="viz-stat-value">₹2,000</div></div>
+      <div class="card viz-stat"><span class="text-muted">Approved paid</span><div class="viz-stat-value">₹500</div></div>
+      <div class="card viz-stat"><span class="text-muted">Remaining</span><div class="viz-stat-value">₹1,500</div></div>
+    </div>
+    <div class="viz-controls" style="margin-top:16px">
+      <label class="form-label">Payment type
+        <select class="form-select"><option>Installment</option><option>Single / final payment</option></select>
+      </label>
+      <label class="form-label">Confirmed amount
+        <input class="form-control" value="500" aria-label="Confirmed amount">
+      </label>
+    </div>
+    <div class="viz-row" style="justify-content:flex-end; margin-top:16px">
+      <button type="button" class="btn">Cancel</button>
+      <button type="button" class="btn btn-primary">Send for approval</button>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:18px">
+  <div class="option" data-choice="approve-each" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Approve each installment</h3><p>Recommended: every recorded amount is audited before reducing the outstanding balance.</p></div>
+  </div>
+  <div class="option" data-choice="approve-final" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Approve only the final total</h3><p>Installments remain drafts until the full ₹2,000 has been entered, then one approval is created.</p></div>
+  </div>
+</div>

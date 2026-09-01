@@ -1,0 +1,47 @@
+<h2>Revised payment lifecycle</h2>
+<p class="subtitle">Each installment is independent. A later installment can be entered while earlier ones await approval.</p>
+
+<div class="viz-row" style="align-items:stretch; justify-content:center">
+  <div class="card" style="flex:1; min-width:155px">
+    <span class="label">Schedule</span>
+    <h3>Move to Payment Pending</h3>
+    <p>Creates an outstanding payment item using the final expected amount.</p>
+  </div>
+  <div aria-hidden="true" style="align-self:center">→</div>
+  <div class="card" style="flex:1; min-width:155px">
+    <span class="label">Admin + Super Admin</span>
+    <h3>Payment Pending</h3>
+    <p>Paid dialog records Single or Installment. Submitted amounts immediately reduce available balance.</p>
+  </div>
+  <div aria-hidden="true" style="align-self:center">→</div>
+  <div class="card" style="flex:1; min-width:155px">
+    <span class="label">Super Admin approves</span>
+    <h3>Payment Approval</h3>
+    <p>One row per submitted payment. Admin can view; only Super Admin clicks Received.</p>
+  </div>
+  <div aria-hidden="true" style="align-self:center">→</div>
+  <div class="card" style="flex:1; min-width:155px">
+    <span class="label">History</span>
+    <h3>Received Details</h3>
+    <p>Approved transactions remain available as a permanent payment history.</p>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>₹2,000 example</h3>
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead><tr><th>Entry</th><th>Type</th><th class="text-end">Paid</th><th>Status</th><th class="text-end">Remaining after entry</th></tr></thead>
+      <tbody>
+        <tr><td>#1</td><td>Installment</td><td class="text-end">₹500</td><td><span class="viz-badge">Waiting approval</span></td><td class="text-end">₹1,500</td></tr>
+        <tr><td>#2</td><td>Installment</td><td class="text-end">₹700</td><td><span class="viz-badge">Waiting approval</span></td><td class="text-end">₹800</td></tr>
+        <tr><td>#3</td><td>Single / final</td><td class="text-end">₹800</td><td><span class="viz-badge">Waiting approval</span></td><td class="text-end">₹0</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <span class="label">Ledger rule</span>
+  <p><strong>Available balance = final expected amount − all submitted payments.</strong> Approval changes a transaction from Waiting to Received but does not subtract it twice.</p>
+</div>

@@ -1,0 +1,1298 @@
+.detail-page {
+    min-height: 100vh;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 18px 24px 28px;
+    background: #f6f8fb;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.detail-loading,
+.detail-error,
+.detail-not-found {
+    display: flex;
+    min-height: 260px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    padding: 28px;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.detail-error {
+    border-color: #fecaca;
+    background: #fff7f7;
+    color: #991b1b;
+}
+
+.detail-error .error-icon {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-weight: 800;
+}
+
+.error-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.detail-error button,
+.detail-not-found button {
+    height: 34px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.detail-error button:hover,
+.detail-not-found button:hover {
+    background: #1d4ed8;
+}
+
+.detail-not-found h3,
+.detail-not-found p {
+    margin: 0;
+}
+
+.detail-not-found p {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.detail-header {
+    margin-bottom: 10px;
+}
+
+.detail-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #2563eb;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.detail-back-btn:hover {
+    color: #1d4ed8;
+}
+
+.detail-title-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.detail-title-left {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.detail-header-products {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.detail-header-products .detail-products-list {
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.detail-header-products .detail-product-item {
+    padding: 3px 8px;
+}
+
+.detail-title-section h1 {
+    margin: 0;
+    color: #111827;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.detail-inquiry-id,
+.detail-status-chip,
+.detail-source-badge,
+.detail-product-count,
+.detail-product-count-badge,
+.detail-permission-chip,
+.update-date-badge,
+.update-date-display {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.detail-inquiry-id,
+.detail-source-badge,
+.detail-product-count-badge,
+.update-date-badge {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.update-date-display {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.detail-status-chip {
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.detail-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin: 0 0 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.detail-summary-strip div {
+    min-width: 0;
+    padding: 10px 14px;
+    border-right: 1px solid #edf2f7;
+}
+
+.detail-summary-strip div:last-child {
+    border-right: 0;
+}
+
+.detail-summary-strip span {
+    display: block;
+    margin-bottom: 2px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.detail-summary-strip strong {
+    display: block;
+    overflow: hidden;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.detail-top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.detail-top-row .detail-card {
+    padding: 10px 14px;
+}
+
+.detail-top-row .detail-card-header {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+}
+
+.detail-top-row .detail-info-row {
+    min-height: 26px;
+}
+
+.detail-top-row .detail-products-section {
+    margin-top: 6px;
+    padding-top: 6px;
+}
+
+.detail-top-row .detail-products-header {
+    margin-bottom: 5px;
+}
+
+.detail-top-row .detail-products-list {
+    gap: 4px;
+}
+
+.detail-top-row .detail-product-item {
+    gap: 5px;
+    padding: 3px 8px;
+}
+
+.detail-task-section {
+    width: 100%;
+}
+
+.detail-payment-panel {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.detail-payment-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    gap: 12px;
+    width: min(100%, 430px);
+}
+
+.detail-payment-fields label {
+    display: grid;
+    gap: 5px;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.detail-payment-input-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 34px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.detail-payment-input-wrap:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.detail-payment-input-wrap>span {
+    padding-left: 10px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.detail-payment-input-wrap input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    padding: 7px 10px 7px 5px;
+    color: #111827;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.detail-payment-input-wrap.is-readonly {
+    background: #f8fafc;
+}
+
+.detail-payment-input-wrap.is-readonly input {
+    color: #475569;
+    cursor: default;
+}
+
+.detail-payment-action {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.detail-payment-action button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 6px;
+    background: #2563eb;
+    padding: 0 16px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.detail-payment-action button:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.detail-payment-action button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.detail-payment-error {
+    max-width: 300px;
+    color: #b91c1c;
+    font-size: 11px;
+    text-align: right;
+}
+
+.detail-payment-success {
+    margin-top: 10px;
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    background: #ecfdf5;
+    padding: 8px 12px;
+    color: #047857;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.detail-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    padding: 14px 16px;
+}
+
+.detail-card-header,
+.detail-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.detail-card-title-row .detail-card-header {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.detail-card h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.detail-info-row {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 30px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-info-row:last-child {
+    border-bottom: 0;
+}
+
+.detail-label {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.detail-value {
+    min-width: 0;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.detail-amount {
+    color: #047857;
+    font-weight: 800;
+}
+
+.detail-phone-link,
+.detail-email-link {
+    color: #1d4ed8;
+    text-decoration: none;
+}
+
+.detail-phone-link:hover,
+.detail-email-link:hover {
+    text-decoration: underline;
+}
+
+.detail-products-section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #edf2f7;
+}
+
+.detail-products-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.detail-products-label {
+    color: #111827;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.detail-products-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.detail-product-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #f8fafc;
+    padding: 4px 9px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.product-dot,
+.permission-dot,
+.session-dot,
+.update-action-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #2563eb;
+}
+
+.permission-dot,
+.update-action-dot {
+    background: #10b981;
+}
+
+.task-title-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detail-permission-chip {
+    background: #ecfdf5;
+    color: #047857;
+    gap: 6px;
+}
+
+.add-task-btn,
+.remove-task-btn,
+.submit-draft-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.add-task-btn {
+    gap: 6px;
+    padding: 0 12px;
+    background: #2563eb;
+    color: #fff;
+}
+
+.add-task-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.submit-draft-btn {
+    min-width: 52px;
+    padding: 0 10px;
+    background: #dcfce7;
+    color: #166534;
+}
+
+.submit-draft-btn:hover:not(:disabled) {
+    background: #bbf7d0;
+}
+
+.remove-task-btn {
+    min-width: 64px;
+    padding: 0 10px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.remove-task-btn:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.add-task-btn:disabled,
+.remove-task-btn:disabled,
+.submit-draft-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.draft-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.task-icon-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.active-task-notes-input {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    border: 1px solid #dbe3ef;
+    border-radius: 7px;
+    background: #fff;
+    padding: 0 11px;
+    color: #334155;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.reschedule-at-input {
+    width: 100%;
+    height: 30px;
+    margin-top: 6px;
+    border: 1px solid #dbe3ef;
+    border-radius: 7px;
+    background: #fff;
+    padding: 0 8px;
+    color: #334155;
+    font: inherit;
+    font-size: 11px;
+}
+
+.reschedule-action {
+    position: relative;
+}
+
+.reschedule-modal-overlay {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.38);
+}
+
+.task-reschedule-icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.task-reschedule-icon svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
+}
+
+.reschedule-popover {
+    width: min(360px, calc(100vw - 40px));
+    box-sizing: border-box;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.24);
+}
+
+.reschedule-popover-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.reschedule-popover-icon {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 7px;
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.reschedule-popover-icon svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
+}
+
+.reschedule-popover-heading strong,
+.reschedule-popover-heading small {
+    display: block;
+}
+
+.reschedule-popover-heading strong {
+    color: #1e293b;
+    font-size: 12px;
+}
+
+.reschedule-popover-heading small {
+    margin-top: 2px;
+    color: #94a3b8;
+    font-size: 10px;
+}
+
+.reschedule-quick-options {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0;
+}
+
+.reschedule-quick-options button {
+    flex: 1;
+    min-height: 27px;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.reschedule-quick-options button:hover:not(:disabled) {
+    background: #dbeafe;
+}
+
+.reschedule-fields {
+    display: grid;
+    grid-template-columns: 138px minmax(0, 1fr);
+    align-items: end;
+    gap: 8px;
+}
+
+.reschedule-fields label {
+    display: grid;
+    gap: 5px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.reschedule-fields input {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    border: 1px solid #dbe3ef;
+    border-radius: 6px;
+    padding: 0 7px;
+    color: #334155;
+    font: inherit;
+    font-size: 11px;
+}
+
+.reschedule-date-picker { position: relative; }
+.reschedule-date-trigger { width: 100%; height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; border: 1px solid #dbe3ef; border-radius: 6px; color: #334155; background: #fff; font: inherit; font-size: 11px; cursor: pointer; }
+.reschedule-calendar { position: absolute; z-index: 8; top: calc(100% + 4px); left: 0; width: 232px; padding: 8px; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; box-shadow: 0 10px 24px rgba(15, 23, 42, .18); }
+.reschedule-calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: 11px; }
+.reschedule-calendar-header button { width: 24px; height: 24px; border: 0; border-radius: 4px; background: #f1f5f9; cursor: pointer; }
+.reschedule-calendar-weekdays, .reschedule-calendar-days { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+.reschedule-calendar-weekdays { margin-bottom: 3px; color: #94a3b8; font-size: 8px; text-align: center; }
+.reschedule-calendar-days button { height: 25px; border: 0; border-radius: 4px; color: #334155; background: transparent; font: inherit; font-size: 10px; cursor: pointer; }
+.reschedule-calendar-days button:hover:not(:disabled), .reschedule-calendar-days button.selected { color: #fff; background: #2563eb; }
+.reschedule-calendar-days button:disabled { color: #cbd5e1; cursor: not-allowed; }
+
+.reschedule-time-group {
+    display: grid;
+    gap: 5px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.reschedule-time-inputs {
+    display: grid;
+    grid-template-columns: 42px 8px 42px 52px;
+    align-items: center;
+    gap: 5px;
+    justify-content: start;
+}
+
+.reschedule-time-inputs span {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.reschedule-time-inputs input {
+    min-width: 0;
+    text-align: center;
+}
+
+.reschedule-time-dropdown {
+    position: relative;
+    min-width: 0;
+}
+
+.reschedule-time-dropdown input {
+    padding-right: 24px;
+}
+
+.reschedule-time-toggle {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 22px;
+    height: 28px;
+    border: 0;
+    border-radius: 0 5px 5px 0;
+    color: #475569;
+    background: transparent;
+    cursor: pointer;
+}
+
+.reschedule-time-toggle:hover:not(:disabled) {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.reschedule-time-options {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 3px;
+    border: 1px solid #dbe3ef;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.15);
+}
+
+.reschedule-time-options button {
+    width: 100%;
+    padding: 5px 6px;
+    border: 0;
+    border-radius: 4px;
+    color: #334155;
+    background: transparent;
+    font: inherit;
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.reschedule-time-options button:hover,
+.reschedule-time-options button[aria-selected="true"] {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.reschedule-selection {
+    margin-top: 9px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.reschedule-popover label {
+    display: block;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.reschedule-popover .reschedule-at-input {
+    margin-top: 5px;
+}
+
+.reschedule-popover-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.reschedule-popover-actions button {
+    min-height: 26px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 5px;
+    background: #f1f5f9;
+    color: #475569;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.task-reschedule-btn {
+    min-height: 28px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.task-reschedule-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.rescheduled-callback {
+    display: block;
+    margin-top: 3px;
+    color: #b45309;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.active-task-notes-input::placeholder {
+    color: #94a3b8;
+}
+
+.active-task-notes-input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+}
+
+.active-task-notes-input:disabled {
+    cursor: not-allowed;
+    background: #f8fafc;
+}
+
+.task-icon-btn {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.task-save-icon {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.task-remove-icon {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.task-icon-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.detail-updates-list {
+    overflow: auto;
+}
+
+.active-session-banner,
+.task-grid-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.active-session-banner {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.task-grid-warning {
+    border: 1px solid #fde68a;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.updates-grid {
+    display: grid;
+    min-width: 500px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: visible;
+}
+
+.updates-grid-head,
+.updates-grid-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) minmax(300px, 2fr) minmax(140px, 0.75fr);
+}
+
+.updates-grid-head {
+    min-height: 34px;
+    align-items: center;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.updates-grid-row {
+    align-items: stretch;
+    min-height: 42px;
+    border-top: 1px solid #edf2f7;
+    background: #fff;
+    color: #1f2937;
+    font-size: 13px;
+}
+
+.updates-grid-row:hover {
+    background: #f8fafc;
+}
+
+.updates-grid-head span,
+.updates-grid-row>span {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    padding: 8px 10px;
+    overflow-wrap: anywhere;
+}
+
+.updates-grid-empty {
+    border-top: 1px solid #edf2f7;
+    background: #fff;
+    padding: 18px 12px;
+    color: #64748b;
+    font-size: 13px;
+    text-align: center;
+}
+
+.updates-grid-row-editing {
+    background: #fbfdff;
+}
+
+.updates-grid-row-editing .edit-textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid #dbe3ef;
+    border-radius: 6px;
+    background: #fff;
+    color: #111827;
+    font-family: inherit;
+    font-size: 12px;
+    min-height: 44px;
+    padding: 6px 8px;
+    resize: vertical;
+}
+
+.updates-grid-row-editing .edit-textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.update-progress {
+    align-items: flex-start !important;
+    color: #334155;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.35;
+}
+
+@media (max-width: 1024px) {
+
+    .detail-top-row,
+    .detail-summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detail-summary-strip div:nth-child(2) {
+        border-right: 0;
+    }
+
+    .detail-summary-strip div:nth-child(-n + 2) {
+        border-bottom: 1px solid #edf2f7;
+    }
+}
+
+@media (max-width: 768px) {
+    .detail-page {
+        padding: 14px;
+    }
+
+    .detail-title-section,
+    .detail-card-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .detail-header-products {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+        flex-wrap: wrap;
+    }
+
+    .detail-header-products .detail-products-list {
+        flex-wrap: wrap;
+        overflow: visible;
+    }
+
+    .detail-payment-panel {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .detail-payment-fields {
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .detail-payment-action {
+        align-items: stretch;
+    }
+
+    .detail-payment-action button {
+        width: 100%;
+    }
+
+    .detail-payment-error {
+        max-width: none;
+        text-align: left;
+    }
+
+    .detail-title-section h1 {
+        font-size: 20px;
+    }
+
+    .detail-top-row,
+    .detail-summary-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-summary-strip div {
+        border-right: 0;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .detail-summary-strip div:last-child {
+        border-bottom: 0;
+    }
+
+    .detail-info-row {
+        grid-template-columns: 1fr;
+        gap: 2px;
+        padding: 7px 0;
+    }
+
+    .detail-value {
+        text-align: left;
+    }
+
+    .task-title-actions {
+        flex-wrap: wrap;
+    }
+
+    .updates-grid {
+        min-width: 300px;
+    }
+
+    .updates-grid-head,
+    .updates-grid-row {
+        grid-template-columns: 1fr 1.5fr 1fr;
+    }
+}
+
+/* Add these styles or replace the existing reschedule-time-options styles */
+
+.reschedule-time-dropdown {
+    position: relative;
+    min-width: 0;
+    width: 100%;
+}
+
+.reschedule-time-dropdown input {
+    padding-right: 24px;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 30px;
+    text-align: center;
+}
+
+.reschedule-time-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 24px;
+    height: 100%;
+    min-height: 30px;
+    border: 0;
+    border-radius: 0 5px 5px 0;
+    color: #475569;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.reschedule-time-toggle:hover:not(:disabled) {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.reschedule-time-options {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 150px;
+    min-width: 100%;
+    overflow-y: auto;
+    padding: 4px 0;
+    border: 1px solid #dbe3ef;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.15);
+    box-sizing: border-box;
+}
+
+.reschedule-time-options button {
+    width: 100%;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 0;
+    color: #334155;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.reschedule-time-options button:hover,
+.reschedule-time-options button[aria-selected="true"] {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+/* Update the time inputs grid for better spacing */
+.reschedule-time-inputs {
+    display: grid;
+    grid-template-columns: 48px 8px 48px 56px;
+    align-items: center;
+    gap: 4px;
+    justify-content: start;
+}
+
+.reschedule-time-inputs span {
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+}
+
+.reschedule-time-inputs input {
+    min-width: 0;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Make the dropdown wider on smaller screens */
+@media (max-width: 480px) {
+    .reschedule-time-inputs {
+        grid-template-columns: 42px 6px 42px 50px;
+        gap: 3px;
+    }
+
+    .reschedule-time-options button {
+        font-size: 11px;
+        padding: 5px 8px;
+    }
+}

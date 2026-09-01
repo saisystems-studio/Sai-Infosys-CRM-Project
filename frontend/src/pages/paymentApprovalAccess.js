@@ -23,3 +23,7 @@ export function canRecordPayment(user = {}) {
   const role = normalizeRole(user.role || user.Role || user.user_type);
   return role === "admin";
 }
+
+export function canViewPaymentPending(user = {}) {
+  return canViewPaymentApproval(user);
+}

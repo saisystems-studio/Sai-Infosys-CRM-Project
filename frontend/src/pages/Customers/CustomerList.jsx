@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { FiEye, FiEdit3, FiTrash2 } from "react-icons/fi";
 import "./CustomerList.css";
+import { CUSTOMER_LIST_PAGE_SIZE } from "./customerListPagination";
 import ViewCustomer from "./ViewCustomer";
 import EditCustomer from "./EditCustomer";
 import {
@@ -35,7 +36,7 @@ function CustomerList({ permissions = {} }) {
   const [transferState, setTransferState] = useState({ type: "", message: "" });
   const [transferLoading, setTransferLoading] = useState("");
   const importInputRef = useRef(null);
-  const itemsPerPage = 5;
+  const itemsPerPage = CUSTOMER_LIST_PAGE_SIZE;
 
   useEffect(() => {
     fetchCustomers();

@@ -3,12 +3,21 @@ import axios from "axios";
 import "./Schedule.css";
 import {
   formatTaskDuration,
+  getDefaultScheduleDateRange,
   getScheduleDateState,
   getScheduleInitials,
+  getTodayDateString,
   getTotalTaskDurationSeconds,
   hasScheduleAdminAccess,
   isScheduleCardActivationKey,
 } from "./schedulePresentation";
+import {
+  buildPaymentPendingPayload,
+  getPaymentPendingDefaults,
+  getPaymentPendingError,
+  validateInvoiceAmount,
+  validateRevenueAmount,
+} from "./schedulePaymentPending";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 
@@ -35,17 +44,18 @@ const Schedule = ({ onViewDetails }) => {
   const [error, setError] = useState("");
   const [movingInquiryId, setMovingInquiryId] = useState(null);
   const [paymentPendingInquiry, setPaymentPendingInquiry] = useState(null);
+  const [invoiceAmount, setInvoiceAmount] = useState("");
   const [revenueAmount, setRevenueAmount] = useState("");
+  const [unpaidService, setUnpaidService] = useState(false);
   const [isAdmin] = useState(getInitialAdminState);
   const [currentUser] = useState(getInitialUser);
   const [durationNow, setDurationNow] = useState(() => new Date());
-  const [filters, setFilters] = useState({
-    fromDate: "",
-    toDate: "",
+  const [filters, setFilters] = useState(() => ({
+    ...getDefaultScheduleDateRange(),
     staffId: "",
     status: "",
-    product: "", // Added product filter
-  });
+    product: "",
+  }));
   const normalizedRole = String(currentUser.role || "")
     .trim()
     .toLowerCase()
@@ -207,14 +217,23 @@ const Schedule = ({ onViewDetails }) => {
   };
 
   const openPaymentPendingDialog = (inquiry) => {
+    const defaults = getPaymentPendingDefaults(inquiry);
     setPaymentPendingInquiry(inquiry);
-    setRevenueAmount(inquiry.total ? String(inquiry.total) : "");
+    setInvoiceAmount(defaults.invoiceAmount);
+    setRevenueAmount(defaults.revenueAmount);
+    setUnpaidService(false);
     setError("");
   };
 
   const handleMoveToPaymentPending = async () => {
-    if (!paymentPendingInquiry || revenueAmount.trim() === "") {
-      setError("Enter the total revenue amount before continuing.");
+    if (!paymentPendingInquiry) return;
+
+    const validationError = unpaidService
+      ? ""
+      : validateInvoiceAmount(invoiceAmount) ||
+        validateRevenueAmount(revenueAmount);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -225,18 +244,17 @@ const Schedule = ({ onViewDetails }) => {
       const token = localStorage.getItem("crm_access_token");
       await axios.post(
         `${API_BASE_URL}/inquiries/${paymentPendingInquiry.id}/move-to-payment-pending/`,
-        { revenue_amount: revenueAmount },
+        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService),
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setPaymentPendingInquiry(null);
+      setInvoiceAmount("");
       setRevenueAmount("");
+      setUnpaidService(false);
       await fetchSchedule();
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          "Unable to move this inquiry to Payment Pending.",
-      );
+      setError(getPaymentPendingError(err, unpaidService));
     } finally {
       setMovingInquiryId(null);
     }
@@ -283,11 +301,13 @@ const Schedule = ({ onViewDetails }) => {
   // ============================================================
   // FILTERED INQUIRIES
   // ============================================================
+  const effectiveFromDate = filters.fromDate || getTodayDateString(durationNow);
+  const effectiveToDate = filters.toDate || getTodayDateString(durationNow);
+
   const filteredInquiries = inquiries.filter((inquiry) => {
     const scheduleDate = String(inquiry.schedule_date || "").slice(0, 10);
-    const matchesFromDate =
-      !filters.fromDate || scheduleDate >= filters.fromDate;
-    const matchesToDate = !filters.toDate || scheduleDate <= filters.toDate;
+    const matchesFromDate = !effectiveFromDate || scheduleDate >= effectiveFromDate;
+    const matchesToDate = !effectiveToDate || scheduleDate <= effectiveToDate;
     const matchesStaff =
       !filters.staffId || String(inquiry.Resource_Id || "") === filters.staffId;
     const matchesStatus =
@@ -414,7 +434,7 @@ const Schedule = ({ onViewDetails }) => {
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                fromDate: event.target.value,
+                fromDate: event.target.value || getTodayDateString(new Date()),
               }))
             }
           />
@@ -427,7 +447,7 @@ const Schedule = ({ onViewDetails }) => {
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                toDate: event.target.value,
+                toDate: event.target.value || getTodayDateString(new Date()),
               }))
             }
           />
@@ -500,15 +520,16 @@ const Schedule = ({ onViewDetails }) => {
           <button
             type="button"
             className="schedule-clear-filters"
-            onClick={() =>
+            onClick={() => {
+              const today = getTodayDateString(new Date());
               setFilters({
-                fromDate: "",
-                toDate: "",
+                fromDate: today,
+                toDate: today,
                 staffId: "",
                 status: "",
                 product: "",
-              })
-            }
+              });
+            }}
           >
             Clear filters
           </button>
@@ -805,7 +826,11 @@ const Schedule = ({ onViewDetails }) => {
             <div className="payment-pending-modal-header">
               <div>
                 <span className="payment-pending-eyebrow">Confirm status</span>
-                <h2>Move to Payment Pending</h2>
+                <h2>
+                  {unpaidService
+                    ? "Complete Unpaid Service"
+                    : "Move to Payment Pending"}
+                </h2>
               </div>
               <button
                 type="button"
@@ -819,21 +844,60 @@ const Schedule = ({ onViewDetails }) => {
             <p className="payment-pending-customer">
               {paymentPendingInquiry.customer_name || "This inquiry"}
             </p>
-            <label className="payment-pending-label" htmlFor="revenue-amount">
-              Total revenue amount
-            </label>
-            <div className="payment-pending-input-wrap">
-              <span>₹</span>
+            <label className="payment-pending-unpaid">
               <input
-                id="revenue-amount"
-                type="number"
-                min="0"
-                step="0.01"
-                value={revenueAmount}
-                onChange={(event) => setRevenueAmount(event.target.value)}
-                autoFocus
+                type="checkbox"
+                checked={unpaidService}
+                onChange={(event) => setUnpaidService(event.target.checked)}
               />
-            </div>
+              <span>
+                <strong>Unpaid Service</strong>
+                <small>Complete without creating a pending payment</small>
+              </span>
+            </label>
+            {!unpaidService && (
+              <div className="payment-pending-fields">
+                <div>
+                  <label
+                    className="payment-pending-label"
+                    htmlFor="invoice-amount"
+                  >
+                    Invoice amount
+                  </label>
+                  <div className="payment-pending-input-wrap">
+                    <span>₹</span>
+                    <input
+                      id="invoice-amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={invoiceAmount}
+                      onChange={(event) => setInvoiceAmount(event.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label
+                    className="payment-pending-label"
+                    htmlFor="revenue-amount"
+                  >
+                    Revenue amount
+                  </label>
+                  <div className="payment-pending-input-wrap">
+                    <span>₹</span>
+                    <input
+                      id="revenue-amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={revenueAmount}
+                      onChange={(event) => setRevenueAmount(event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="payment-pending-modal-actions">
               <button
                 type="button"
@@ -850,7 +914,9 @@ const Schedule = ({ onViewDetails }) => {
               >
                 {movingInquiryId === paymentPendingInquiry.id
                   ? "Saving..."
-                  : "Confirm & Save"}
+                  : unpaidService
+                    ? "Complete"
+                    : "Confirm & Save"}
               </button>
             </div>
           </div>

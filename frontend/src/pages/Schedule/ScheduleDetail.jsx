@@ -2,9 +2,19 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import {
   buildPaymentPendingPayload,
+  getPaymentPendingError,
   validateInvoiceAmount,
   validateRevenueAmount,
 } from "./schedulePaymentPending.js";
+import {
+  buildInvoiceAmountPayload,
+  INVOICE_AUTOSAVE_DELAY_MS,
+  scheduleInvoiceAmountSave,
+} from "./scheduleInvoiceAutosave.js";
+import {
+  canAccessTaskActions,
+  isPaymentPendingStatus,
+} from "./scheduleTaskCompletion.js";
 import "./ScheduleDetail.css";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
@@ -183,10 +193,15 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
   const autoStartedTask = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoiceSaveStatus, setInvoiceSaveStatus] = useState("");
+  const lastSavedInvoiceAmount = useRef(null);
   const [revenueAmount, setRevenueAmount] = useState("");
+  const [unpaidService, setUnpaidService] = useState(false);
   const [movingToPaymentPending, setMovingToPaymentPending] = useState(false);
   const [paymentPendingError, setPaymentPendingError] = useState("");
   const [paymentPendingSuccess, setPaymentPendingSuccess] = useState("");
+  const [showPaymentPendingConfirmation, setShowPaymentPendingConfirmation] =
+    useState(false);
 
   /* ============================================================
      AUTH HEADERS
@@ -221,9 +236,13 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
       );
 
       setInquiry(response.data);
-      setInvoiceAmount(
-        response.data.total != null ? String(response.data.total) : "",
-      );
+      const savedInvoiceAmount =
+        response.data.invoice_amount != null
+          ? String(response.data.invoice_amount)
+          : "";
+      lastSavedInvoiceAmount.current = savedInvoiceAmount;
+      setInvoiceAmount(savedInvoiceAmount);
+      setInvoiceSaveStatus("");
       setRevenueAmount(
         response.data.total != null ? String(response.data.total) : "",
       );
@@ -323,14 +342,48 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
     fetchDetailData();
   }, [fetchDetailData]);
 
+  useEffect(() => {
+    if (
+      !inquiryId ||
+      unpaidService ||
+      invoiceAmount === lastSavedInvoiceAmount.current ||
+      validateInvoiceAmount(invoiceAmount)
+    ) {
+      return undefined;
+    }
+
+    setInvoiceSaveStatus("Saving...");
+    return scheduleInvoiceAmountSave(
+      async (value) => {
+        try {
+          await axios.post(
+            `${API_BASE_URL}/inquiries/${inquiryId}/invoice-amount/`,
+            buildInvoiceAmountPayload(value),
+            { headers: getHeaders() },
+          );
+          lastSavedInvoiceAmount.current = value;
+          setInvoiceSaveStatus("Saved");
+        } catch (err) {
+          setInvoiceSaveStatus(
+            err.response?.data?.detail || "Invoice amount could not be saved.",
+          );
+        }
+      },
+      invoiceAmount,
+      INVOICE_AUTOSAVE_DELAY_MS,
+    );
+  }, [getHeaders, inquiryId, invoiceAmount, unpaidService]);
+
   const handleMoveToPaymentPending = async () => {
-    const invoiceValidationError = validateInvoiceAmount(invoiceAmount);
+    const invoiceValidationError = unpaidService
+      ? ""
+      : validateInvoiceAmount(invoiceAmount);
     if (invoiceValidationError) {
       setPaymentPendingError(invoiceValidationError);
       return;
     }
 
-    const validationError = validateRevenueAmount(revenueAmount);
+    const validationError = unpaidService ? "" : validateRevenueAmount(revenueAmount);
     if (validationError) {
       setPaymentPendingError(validationError);
       return;
@@ -343,17 +396,19 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
 
       await axios.post(
         `${API_BASE_URL}/inquiries/${inquiry.id}/move-to-payment-pending/`,
-        buildPaymentPendingPayload(invoiceAmount, revenueAmount),
+        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService),
         { headers: getHeaders() },
       );
 
       await fetchDetailData();
-      setPaymentPendingSuccess("Inquiry moved to Payment Pending.");
-    } catch (err) {
-      setPaymentPendingError(
-        err.response?.data?.detail ||
-          "Unable to move this inquiry to Payment Pending.",
+      setShowPaymentPendingConfirmation(false);
+      setPaymentPendingSuccess(
+        unpaidService
+          ? "Unpaid service completed successfully."
+          : "Inquiry moved to Payment Pending.",
       );
+    } catch (err) {
+      setPaymentPendingError(getPaymentPendingError(err, unpaidService));
     } finally {
       setMovingToPaymentPending(false);
     }
@@ -818,6 +873,12 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
     );
   }
 
+  const taskProcessCompleted = isPaymentPendingStatus(inquiry.status_name);
+  const canUseTaskActions = canAccessTaskActions(
+    inquiry.can_update_task,
+    inquiry.status_name,
+  );
+
   /* ============================================================
      RENDER
      ============================================================ */
@@ -961,36 +1022,38 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
             </div>
 
             <div className="task-title-actions">
-              {inquiry.can_update_task && (
+              {canUseTaskActions && (
                 <span className="detail-permission-chip">
                   <span className="permission-dot" />
                   Assigned resource
                 </span>
               )}
 
-              <button
-                type="button"
-                className="add-task-btn"
-                onClick={addTask}
-                disabled={
-                  submitting ||
-                  !inquiry.can_update_task ||
-                  !!inquiry.active_session
-                }
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 14 14"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
+              {taskProcessCompleted ? (
+                <span className="task-process-completed">
+                  Task process completed
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="add-task-btn"
+                  onClick={addTask}
+                  disabled={submitting || !canUseTaskActions || !!inquiry.active_session}
                 >
-                  <path d="M7 1V13M1 7H13" strokeLinecap="round" />
-                </svg>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M7 1V13M1 7H13" strokeLinecap="round" />
+                  </svg>
 
-                {inquiry.active_session ? "Task Active" : "Add Task"}
-              </button>
+                  {inquiry.active_session ? "Task Active" : "Add Task"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1406,7 +1469,20 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
 
       {inquiry.can_move_to_payment_pending && (
         <div className="detail-payment-panel">
-          <div className="detail-payment-fields">
+          <label className="detail-unpaid-service">
+            <input
+              type="checkbox"
+              checked={unpaidService}
+              onChange={(event) => {
+                setUnpaidService(event.target.checked);
+                setPaymentPendingError("");
+              }}
+              disabled={movingToPaymentPending}
+            />
+            <span>Unpaid Service</span>
+          </label>
+
+          {!unpaidService && <div className="detail-payment-fields">
             <label>
               <span>Invoice Amount</span>
               <div className="detail-payment-input-wrap">
@@ -1418,12 +1494,16 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
                   value={invoiceAmount}
                   onChange={(event) => {
                     setInvoiceAmount(event.target.value);
+                    setInvoiceSaveStatus("");
                     setPaymentPendingError("");
                   }}
                   disabled={movingToPaymentPending}
                   aria-label="Invoice amount"
                 />
               </div>
+              {invoiceSaveStatus && (
+                <small role="status">{invoiceSaveStatus}</small>
+              )}
             </label>
 
             <label>
@@ -1444,7 +1524,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
                 />
               </div>
             </label>
-          </div>
+          </div>}
 
           <div className="detail-payment-action">
             {paymentPendingError && (
@@ -1454,12 +1534,61 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
             )}
             <button
               type="button"
-              onClick={handleMoveToPaymentPending}
+              onClick={() => setShowPaymentPendingConfirmation(true)}
               disabled={movingToPaymentPending}
             >
-              {movingToPaymentPending ? "Moving..." : "Move to Payment Pending"}
+              {movingToPaymentPending
+                ? unpaidService ? "Completing..." : "Moving..."
+                : unpaidService ? "Complete" : "Move to Payment Pending"}
             </button>
           </div>
+        </div>
+      )}
+
+      {showPaymentPendingConfirmation && (
+        <div
+          className="payment-confirm-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !movingToPaymentPending) {
+              setShowPaymentPendingConfirmation(false);
+            }
+          }}
+        >
+          <section
+            className="payment-confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="payment-confirm-title"
+            aria-describedby="payment-confirm-description"
+          >
+            <h2 id="payment-confirm-title">Complete this task process?</h2>
+            <p id="payment-confirm-description">
+              {unpaidService
+                ? "Are you sure you want to complete this unpaid service? Invoice and revenue amounts will be saved as zero."
+                : "Are you sure you want to move this inquiry to Payment Pending? After moving, the task process is completed and you cannot add or update tasks."}
+            </p>
+            <div className="payment-confirm-actions">
+              <button
+                type="button"
+                className="payment-confirm-cancel"
+                onClick={() => setShowPaymentPendingConfirmation(false)}
+                disabled={movingToPaymentPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="payment-confirm-submit"
+                onClick={handleMoveToPaymentPending}
+                disabled={movingToPaymentPending}
+              >
+                {movingToPaymentPending
+                  ? unpaidService ? "Completing..." : "Moving..."
+                  : unpaidService ? "Complete" : "Move to Payment Pending"}
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </div>

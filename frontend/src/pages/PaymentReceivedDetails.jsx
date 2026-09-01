@@ -1,95 +1,82 @@
-import { useCallback, useEffect, useState } from "react";
-import "./PaymentApproval.css";
+import { useEffect, useMemo, useState } from "react";
+import { filterPaymentDetails, getPaymentCardSummary, getPaymentCompany, getPaymentProduct } from "./paymentDetailsReport";
+import "./CompletedInquiryReport/CompletedInquiryReport.css";
+import "./PaymentDetailsReport.css";
 
-const API_BASE = "http://127.0.0.1:8000/api";
-
-const headers = () => ({
-  Authorization: `Bearer ${localStorage.getItem("crm_access_token")}`,
-});
-
-const formatAmount = (value) =>
-  `₹${Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const emptyFilters = { search: "", product: "", company: "", fromDate: "", toDate: "" };
+const headers = () => ({ Authorization: `Bearer ${localStorage.getItem("crm_access_token") || ""}` });
+const formatAmount = (value) => `₹${Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const formatDate = (value) => value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+const initials = (name) => String(name || "P").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
 export default function PaymentReceivedDetails() {
   const [payments, setPayments] = useState([]);
+  const [filters, setFilters] = useState(emptyFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadPayments = useCallback(async () => {
+  const loadPayments = async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      setError("");
-      const response = await fetch(
-        `${API_BASE}/inquiries/payment-received-details/`,
-        { headers: headers() },
-      );
-      if (!response.ok) {
-        throw new Error("Unable to load received payment details.");
-      }
+      const response = await fetch(`${API_BASE}/inquiries/payment-received-details/`, { headers: headers() });
+      if (!response.ok) throw new Error("Unable to load payment details.");
       setPayments(await response.json());
     } catch (loadError) {
       setError(loadError.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    loadPayments();
-  }, [loadPayments]);
+    let active = true;
+    fetch(`${API_BASE}/inquiries/payment-received-details/`, { headers: headers() })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load payment details.");
+        return response.json();
+      })
+      .then((data) => { if (active) setPayments(data); })
+      .catch((loadError) => { if (active) setError(loadError.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const filteredPayments = useMemo(() => filterPaymentDetails(payments, filters), [payments, filters]);
+  const productOptions = [...new Set(payments.map(getPaymentProduct))].sort();
+  const companyOptions = [...new Set(payments.map(getPaymentCompany))].sort();
+
+  if (loading) return <div className="completed-report-state"><span className="completed-report-spinner" />Loading payment details…</div>;
 
   return (
-    <section className="payment-approval-page">
-      <div className="payment-approval-heading">
-        <div>
-          <span className="payment-approval-kicker">Finance control</span>
-          <h1>Payment Received Details</h1>
-          <p>View revenue payments confirmed as received.</p>
-        </div>
-        <span className="payment-approval-count">{payments.length} received</span>
+    <section className="completed-report-page payment-details-report">
+      <header className="completed-report-header payment-details-header">
+        <div><span className="completed-report-eyebrow">Finance reports</span><h1>Payement Details Report</h1><p>A clear record of customer payments confirmed as received.</p></div>
+        <div className="completed-report-total"><strong>{filteredPayments.length}</strong><span>Received</span></div>
+      </header>
+
+      <div className="completed-report-filters">
+        <label className="completed-report-search"><span>Search</span><input value={filters.search} placeholder="Customer, company or product…" onChange={(event) => setFilters({ ...filters, search: event.target.value })} /></label>
+        <label><span>Product</span><select value={filters.product} onChange={(event) => setFilters({ ...filters, product: event.target.value })}><option value="">All products</option>{productOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
+        <label><span>Company</span><select value={filters.company} onChange={(event) => setFilters({ ...filters, company: event.target.value })}><option value="">All companies</option>{companyOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
+        <label><span>From</span><input type="date" value={filters.fromDate} onChange={(event) => setFilters({ ...filters, fromDate: event.target.value })} /></label>
+        <label><span>To</span><input type="date" value={filters.toDate} onChange={(event) => setFilters({ ...filters, toDate: event.target.value })} /></label>
+        {Object.values(filters).some(Boolean) && <button type="button" onClick={() => setFilters(emptyFilters)}>Clear</button>}
       </div>
-      {error && <div className="payment-approval-error">{error}</div>}
-      <div className="payment-approval-card">
-        {loading ? (
-          <div className="payment-approval-empty">
-            Loading received payment details...
-          </div>
-        ) : payments.length === 0 ? (
-          <div className="payment-approval-empty">
-            No received payments found.
-          </div>
-        ) : (
-          <div className="payment-approval-table-wrap">
-            <table className="payment-approval-table">
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Company</th>
-                  <th>Requirement</th>
-                  <th>Amount</th>
-                  <th>Revenue Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td>{payment.customer_name || "-"}</td>
-                    <td>{payment.company_name || "-"}</td>
-                    <td>{payment.requirement || "-"}</td>
-                    <td>{formatAmount(payment.amount)}</td>
-                    <td className="payment-approval-revenue">
-                      {formatAmount(payment.revenue_amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+
+      {error ? <div className="completed-report-error">{error}<button type="button" onClick={loadPayments}>Retry</button></div> : filteredPayments.length === 0 ? (
+        <div className="completed-report-empty"><strong>No payment details found</strong><span>Try changing the report filters.</span></div>
+      ) : <div className="completed-report-grid">{filteredPayments.map((payment) => {
+        const summary = getPaymentCardSummary(payment);
+        const receivedDate = payment.created_on || payment.payment_date;
+        return <article className="completed-report-card payment-details-card" key={payment.id}>
+          <div className="completed-report-card-top"><div className="completed-report-avatar payment-details-avatar">{initials(payment.customer_name)}</div><div className="completed-report-customer"><span>Payment #{payment.id}</span><h2>{payment.customer_name || "Unknown customer"}</h2><p>{summary.company}</p></div><span className="completed-report-badge">✓ Received</span></div>
+          <div className="completed-report-facts"><div><span>Payment date</span><strong>{formatDate(receivedDate)}</strong></div><div><span>Product</span><strong>{summary.product}</strong></div><div><span>Paid amount</span><strong>{formatAmount(summary.paidAmount)}</strong></div><div><span>Revenue</span><strong className="payment-details-revenue">{formatAmount(summary.revenueAmount)}</strong></div></div>
+          <div className="payment-details-company"><span>Company</span><strong>{summary.company}</strong></div>
+          <footer><span>Transaction recorded</span><strong>{formatDate(receivedDate)}</strong></footer>
+        </article>;
+      })}</div>}
     </section>
   );
 }

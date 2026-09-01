@@ -1,9 +1,14 @@
 import json
+from pathlib import Path
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
+from django.urls import reverse
 
-from .models import StaffDetails, StaffMenuPermission
+from .document_files import delete_media_file_safely, validate_staff_document
+from .models import StaffDetails, StaffDocument, StaffMenuPermission
 
 
 # ============================================================
@@ -30,11 +35,40 @@ class StaffMenuPermissionSerializer(serializers.ModelSerializer):
         ]
 
 
+class StaffDocumentSerializer(serializers.ModelSerializer):
+    Download_Url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StaffDocument
+        fields = [
+            "Id",
+            "Original_Name",
+            "Mime_Type",
+            "File_Size",
+            "Uploaded_On",
+            "Download_Url",
+        ]
+        read_only_fields = fields
+
+    def get_Download_Url(self, obj):
+        path = reverse(
+            "staff-document-download",
+            kwargs={
+                "pk": obj.Staff_Id_id,
+                "document_id": obj.pk,
+            },
+        )
+        request = self.context.get("request")
+        return request.build_absolute_uri(path) if request else path
+
+
 # ============================================================
 # Staff Details Serializer
 # ============================================================
 
 class StaffDetailsSerializer(serializers.ModelSerializer):
+
+    Documents = StaffDocumentSerializer(many=True, read_only=True)
 
     # Login fields - not stored in StaffDetails table
     Username = serializers.CharField(
@@ -45,7 +79,6 @@ class StaffDetailsSerializer(serializers.ModelSerializer):
     Password = serializers.CharField(
         write_only=True,
         required=False,
-        min_length=6
     )
 
     Confirm_Password = serializers.CharField(
@@ -82,6 +115,7 @@ class StaffDetailsSerializer(serializers.ModelSerializer):
 
             # Personal Details
             "Staff_Image",
+            "Documents",
             "Full_Name",
             "Designation",
             "Email_Address",
@@ -141,11 +175,46 @@ class StaffDetailsSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    def _get_validated_documents(self):
+        request = self.context.get("request")
+        uploads = request.FILES.getlist("Staff_Documents") if request else []
+        try:
+            for upload in uploads:
+                validate_staff_document(upload)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({
+                "Staff_Documents": error.messages,
+            }) from error
+        return uploads
+
+    def _save_documents(self, staff, uploads, user):
+        created = []
+        try:
+            for upload in uploads:
+                created.append(StaffDocument.objects.create(
+                    Staff_Id=staff,
+                    Document_File=upload,
+                    Original_Name=Path(upload.name).name[:255],
+                    Mime_Type=upload.content_type or "application/octet-stream",
+                    File_Size=upload.size,
+                    Uploaded_By=(
+                        user if user and user.is_authenticated else None
+                    ),
+                ))
+        except Exception:
+            for document in created:
+                delete_media_file_safely(document.Document_File)
+            raise
+        return created
+
     # ========================================================
     # Create Staff
     # ========================================================
 
+    @transaction.atomic
     def create(self, validated_data):
+
+        document_uploads = self._get_validated_documents()
 
         username = validated_data.pop("Username", None)
         password = validated_data.pop("Password", None)
@@ -223,13 +292,18 @@ class StaffDetailsSerializer(serializers.ModelSerializer):
             if permission_objects:
                 StaffMenuPermission.objects.bulk_create(permission_objects)
 
+        self._save_documents(staff, document_uploads, request.user if request else None)
+
         return staff
 
     # ========================================================
     # Update Staff (bonus: keeps edit-staff flow working too)
     # ========================================================
 
+    @transaction.atomic
     def update(self, instance, validated_data):
+
+        document_uploads = self._get_validated_documents()
 
         # Login fields aren't editable here — ignore if sent
         validated_data.pop("Username", None)
@@ -270,5 +344,12 @@ class StaffDetailsSerializer(serializers.ModelSerializer):
 
             if permission_objects:
                 StaffMenuPermission.objects.bulk_create(permission_objects)
+
+        request = self.context.get("request")
+        self._save_documents(
+            instance,
+            document_uploads,
+            request.user if request else None,
+        )
 
         return instance

@@ -13,6 +13,7 @@ from Inquiry.models import (
     PaymentDetail,
 )
 from Inquiry.payment_ledger import approve_payment_detail, record_payment
+from masters.models import StatusTypeMaster
 from staff.models import StaffDetails
 
 
@@ -164,6 +165,33 @@ class PaymentApprovalAccessTests(TestCase):
         self.pending_payment.refresh_from_db()
         self.assertEqual(self.pending_payment.Payment_Status, "Received")
 
+    def test_approving_final_payment_marks_inquiry_completed(self):
+        """Fails if completed payment approval leaves the inquiry in an unfinished status."""
+        payment_pending_status = StatusTypeMaster.objects.create(
+            status_type_name="Payment Pending",
+            created_by=self.admin_user,
+        )
+        inquiry = self.pending_payment.Inquiry_Id
+        inquiry.Status_Id = payment_pending_status
+        inquiry.save(update_fields=["Status_Id"])
+
+        detail = PaymentDetail.objects.create(
+            Inquiry_Product=self.pending_payment,
+            Amount=Decimal("10.00"),
+            Payment_Type=PaymentDetail.PaymentType.FULL,
+            Created_By=self.admin_user,
+        )
+
+        approve_payment_detail(
+            payment_detail_id=detail.pk,
+            user=self.super_admin_user,
+        )
+
+        self.pending_payment.refresh_from_db()
+        inquiry.refresh_from_db()
+        self.assertEqual(self.pending_payment.Payment_Status, "Received")
+        self.assertEqual(inquiry.Status_Id.status_type_name, "Completed")
+
     def test_installment_reduces_remaining_balance_and_keeps_pending(self):
         """Fails if an installment incorrectly completes the payment."""
         product, total_paid, remaining = record_payment(
@@ -312,6 +340,8 @@ class PaymentApprovalAccessTests(TestCase):
 
     def test_payment_approval_includes_saved_payment_summary(self):
         """Fails if approval users cannot see payment data saved from Payment Pending."""
+        self.pending_payment.Invoice_Amount = Decimal("1250.50")
+        self.pending_payment.save(update_fields=["Invoice_Amount"])
         PaymentDetail.objects.create(
             Inquiry_Product=self.pending_payment,
             Amount=Decimal("4.00"),
@@ -325,10 +355,32 @@ class PaymentApprovalAccessTests(TestCase):
         payment = next(
             item for item in response.data if item["product_id"] == self.pending_payment.id
         )
+        self.assertEqual(payment["invoice_amount"], "1250.50")
         self.assertEqual(payment["total_paid"], "4.00")
         self.assertEqual(payment["remaining_balance"], "6.00")
         self.assertEqual(payment["payment_amount"], "4.00")
         self.assertEqual(payment["payment_type"], "installment")
+
+    def test_payment_approval_uses_amount_when_legacy_invoice_is_null(self):
+        """Older product rows use Amount when Invoice_Amount was not saved."""
+        self.pending_payment.Invoice_Amount = None
+        self.pending_payment.Amount = Decimal("987.65")
+        self.pending_payment.save(update_fields=["Invoice_Amount", "Amount"])
+        PaymentDetail.objects.create(
+            Inquiry_Product=self.pending_payment,
+            Amount=Decimal("4.00"),
+            Payment_Type=PaymentDetail.PaymentType.INSTALLMENT,
+            Created_By=self.admin_user,
+        )
+
+        response = self.client.get("/api/inquiries/payment-approvals/")
+
+        self.assertEqual(response.status_code, 200)
+        payment = next(
+            item for item in response.data
+            if item["product_id"] == self.pending_payment.id
+        )
+        self.assertEqual(payment["invoice_amount"], "987.65")
 
     def test_payment_approval_lists_each_saved_installment_as_a_separate_row(self):
         """Fails if approval collapses multiple saved installments into one row."""

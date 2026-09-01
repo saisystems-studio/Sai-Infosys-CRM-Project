@@ -720,7 +720,7 @@
 }
 
 .payment-pending-modal {
-  width: min(100%, 420px);
+  width: min(100%, 520px);
   padding: 22px;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
@@ -759,10 +759,49 @@
 }
 
 .payment-pending-customer {
-  margin: 18px 0;
+  margin: 16px 0 12px;
   color: #475569;
   font-size: 13px;
   font-weight: 650;
+}
+
+.payment-pending-unpaid {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #334155;
+  cursor: pointer;
+}
+
+.payment-pending-unpaid input {
+  width: 16px;
+  height: 16px;
+  accent-color: #d97706;
+}
+
+.payment-pending-unpaid span {
+  display: grid;
+  gap: 2px;
+}
+
+.payment-pending-unpaid strong {
+  font-size: 12px;
+}
+
+.payment-pending-unpaid small {
+  color: #64748b;
+  font-size: 10px;
+}
+
+.payment-pending-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .payment-pending-label {
@@ -843,6 +882,10 @@
 
 /* Mobile devices */
 @media (max-width: 768px) {
+  .payment-pending-fields {
+    grid-template-columns: 1fr;
+  }
+
   .schedule-page {
     padding: 16px;
   }

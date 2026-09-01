@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./InquiryPage.css";
 import { createInquiryEditState } from "./inquiryEdit";
+import {
+  canAssignAnyResource,
+  getNewInquiryResource,
+} from "./inquiryResourceAssignment";
 
 /* =========================================================
    API CONFIGURATION
@@ -143,6 +147,14 @@ const normalizeDateForInput = (value) => {
 function InquiryPage({ onCancel, editData = null, isEdit = false }) {
   const initialEditState =
     isEdit && editData ? createInquiryEditState(editData) : null;
+  const [currentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("crm_user") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const canChooseResource = canAssignAnyResource(currentUser);
 
   /* =========================================================
      CUSTOMER
@@ -166,7 +178,6 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
      ========================================================= */
 
   const [products, setProducts] = useState([]);
-  const [ratings, setRatings] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [sources, setSources] = useState([]);
   const [resources, setResources] = useState([]);
@@ -190,7 +201,9 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
    *
    * No foreign-key assumption here.
    */
-  const [resource, setResource] = useState(initialEditState?.resource ?? "");
+  const [resource, setResource] = useState(
+    initialEditState?.resource ?? getNewInquiryResource(currentUser),
+  );
 
   const [source, setSource] = useState(initialEditState?.source ?? "");
   const [status, setStatus] = useState(initialEditState?.status ?? "");
@@ -309,7 +322,6 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
         }
 
         setProducts(Array.isArray(productData) ? productData : []);
-        setRatings(Array.isArray(ratingData) ? ratingData : []);
         setStatuses(Array.isArray(statusData) ? statusData : []);
         setSources(Array.isArray(sourceData) ? sourceData : []);
 
@@ -343,7 +355,6 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
 
         if (!cancelled) {
           setProducts([]);
-          setRatings([]);
           setStatuses([]);
           setSources([]);
 
@@ -617,7 +628,7 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
     /* Dropdowns / inputs */
     setRating("");
     setSchedule("");
-    setResource("");
+    setResource(getNewInquiryResource(currentUser));
     setSource("");
 
     /*
@@ -1219,10 +1230,14 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
               <select
                 value={resource}
                 onChange={(event) => setResource(event.target.value)}
-                disabled={resourceLoading}
+                disabled={resourceLoading || (!isEdit && !canChooseResource)}
               >
                 <option value="">
-                  {resourceLoading ? "Loading Staff..." : "Select Resource"}
+                  {resourceLoading
+                    ? "Loading Staff..."
+                    : canChooseResource || isEdit
+                      ? "Select Resource"
+                      : "Your account is not linked to staff"}
                 </option>
 
                 {resources.map((staff) => (

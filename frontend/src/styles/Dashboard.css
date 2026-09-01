@@ -266,7 +266,7 @@
     height: 68px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 0 32px;
     border-bottom: 1px solid var(--dash-line);
     background: rgba(255, 255, 255, .9);
@@ -316,7 +316,8 @@
 .top-actions {
     display: flex;
     align-items: center;
-    gap: 18px
+    gap: 18px;
+    margin-left: auto
 }
 
 .icon-button {

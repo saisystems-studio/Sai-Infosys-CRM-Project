@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import {
+  buildReminderDateTimeValue,
+  buildReminderReschedulePayload,
+  isReminderCallbackDue,
+  validateReminderReschedule,
+} from "./taskReminderReschedule.js";
 import "./TaskReminder.css";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 const POLL_INTERVAL_MS = 15000;
+const REMINDER_HOURS = Array.from({ length: 12 }, (_, index) =>
+  String(index + 1).padStart(2, "0"),
+);
+const REMINDER_MINUTES = Array.from({ length: 60 }, (_, index) =>
+  String(index).padStart(2, "0"),
+);
 
 const playReminderSound = () => {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -51,6 +63,13 @@ const getAcknowledgedKey = (staffId, inquiryId, callbackAt) =>
 
 const TaskReminder = ({ onOpenInquiry }) => {
   const [reminder, setReminder] = useState(null);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleHour, setRescheduleHour] = useState("12");
+  const [rescheduleMinute, setRescheduleMinute] = useState("00");
+  const [reschedulePeriod, setReschedulePeriod] = useState("AM");
+  const [rescheduleError, setRescheduleError] = useState("");
+  const [savingReschedule, setSavingReschedule] = useState(false);
   const notifiedCallbacks = useRef(new Set());
 
   useEffect(() => {
@@ -71,14 +90,13 @@ const TaskReminder = ({ onOpenInquiry }) => {
           if (String(inquiry.Resource_Id) !== String(user.staff_id)) {
             return false;
           }
-          const callbackTime = new Date(inquiry.next_reschedule_at).getTime();
           const callbackKey = `${inquiry.id}:${inquiry.next_reschedule_at}`;
           const acknowledgedKey = getAcknowledgedKey(
             user.staff_id,
             inquiry.id,
             inquiry.next_reschedule_at,
           );
-          return callbackTime <= now &&
+          return isReminderCallbackDue(inquiry.next_reschedule_at, new Date(now)) &&
             !notifiedCallbacks.current.has(callbackKey) &&
             localStorage.getItem(acknowledgedKey) !== "1";
         });
@@ -102,6 +120,55 @@ const TaskReminder = ({ onOpenInquiry }) => {
   }, []);
 
   if (!reminder) return null;
+
+  const acknowledgeReminder = () => {
+    const user = getReminderUser();
+    localStorage.setItem(
+      getAcknowledgedKey(
+        user.staff_id,
+        reminder.id,
+        reminder.next_reschedule_at,
+      ),
+      "1",
+    );
+  };
+
+  const saveReminderReschedule = async () => {
+    const rescheduleAt = buildReminderDateTimeValue(
+      rescheduleDate,
+      rescheduleHour,
+      rescheduleMinute,
+      reschedulePeriod,
+    );
+    const validationError = validateReminderReschedule(rescheduleAt);
+    if (validationError) {
+      setRescheduleError(validationError);
+      return;
+    }
+    try {
+      setSavingReschedule(true);
+      setRescheduleError("");
+      const token = localStorage.getItem("crm_access_token");
+      await axios.post(
+        `${API_BASE_URL}/inquiries/${reminder.id}/reschedule-callback/`,
+        buildReminderReschedulePayload(rescheduleAt),
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      acknowledgeReminder();
+      setReminder(null);
+      setRescheduling(false);
+      setRescheduleDate("");
+    } catch (error) {
+      setRescheduleError(
+        error.response?.data?.detail ||
+          error.response?.data?.reschedule_at?.[0] ||
+          "Unable to reschedule this callback.",
+      );
+    } finally {
+      setSavingReschedule(false);
+    }
+  };
+
   return (
     <div className="task-reminder-overlay">
       <section className="task-reminder" role="alertdialog" aria-modal="true" aria-labelledby="task-reminder-title">
@@ -115,37 +182,99 @@ const TaskReminder = ({ onOpenInquiry }) => {
             <span><strong>Assigned to:</strong> {reminder.resource_name || "—"}</span>
             <span><strong>Source:</strong> {reminder.source_name || "—"}</span>
           </div>
+          {rescheduling && (
+            <div className="task-reminder-reschedule">
+              <label htmlFor="reminder-reschedule-date">New callback time</label>
+              <div className="task-reminder-date-time">
+                <input
+                  id="reminder-reschedule-date"
+                  type="date"
+                  value={rescheduleDate}
+                  onChange={(event) => {
+                    setRescheduleDate(event.target.value);
+                    setRescheduleError("");
+                  }}
+                  disabled={savingReschedule}
+                  aria-label="Callback date"
+                />
+                <select
+                  value={rescheduleHour}
+                  onChange={(event) => setRescheduleHour(event.target.value)}
+                  disabled={savingReschedule}
+                  aria-label="Callback hour"
+                >
+                  {REMINDER_HOURS.map((hour) => (
+                    <option key={hour} value={hour}>{hour}</option>
+                  ))}
+                </select>
+                <span aria-hidden="true">:</span>
+                <select
+                  value={rescheduleMinute}
+                  onChange={(event) => setRescheduleMinute(event.target.value)}
+                  disabled={savingReschedule}
+                  aria-label="Callback minute"
+                >
+                  {REMINDER_MINUTES.map((minute) => (
+                    <option key={minute} value={minute}>{minute}</option>
+                  ))}
+                </select>
+                <select
+                  value={reschedulePeriod}
+                  onChange={(event) => setReschedulePeriod(event.target.value)}
+                  disabled={savingReschedule}
+                  aria-label="Callback AM or PM"
+                >
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
+              {rescheduleError && (
+                <span className="task-reminder-error" role="alert">
+                  {rescheduleError}
+                </span>
+              )}
+            </div>
+          )}
           <div className="task-reminder-actions">
+            {rescheduling ? (
+              <>
+                <button
+                  type="button"
+                  className="task-reminder-dismiss"
+                  onClick={() => {
+                    setRescheduling(false);
+                    setRescheduleDate("");
+                    setRescheduleError("");
+                  }}
+                  disabled={savingReschedule}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="task-reminder-open"
+                  onClick={saveReminderReschedule}
+                  disabled={savingReschedule}
+                >
+                  {savingReschedule ? "Saving..." : "Confirm Reschedule"}
+                </button>
+              </>
+            ) : (
+              <>
             <button
               type="button"
-              className="task-reminder-dismiss"
-              onClick={() => {
-                const user = getReminderUser();
-                localStorage.setItem(
-                  getAcknowledgedKey(
-                    user.staff_id,
-                    reminder.id,
-                    reminder.next_reschedule_at,
-                  ),
-                  "1",
-                );
-                setReminder(null);
-              }}
+              className="task-reminder-reschedule-btn"
+              onClick={() => setRescheduling(true)}
             >
-              Dismiss
+              Reschedule
             </button>
             <button type="button" className="task-reminder-open" onClick={() => {
-              localStorage.setItem(
-                getAcknowledgedKey(
-                  getReminderUser().staff_id,
-                  reminder.id,
-                  reminder.next_reschedule_at,
-                ),
-                "1",
-              );
+              acknowledgeReminder();
               setReminder(null);
               onOpenInquiry(reminder.id, { autoStartTask: true });
             }}>Open inquiry</button>
+              </>
+            )}
           </div>
         </div>
       </section>

@@ -105,6 +105,14 @@ class InquiryProductDetails_tbl(models.Model):
         db_column="Amount"
     )
 
+    Invoice_Amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        db_column="Invoice_Amount",
+    )
+
     Revenue_Amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,

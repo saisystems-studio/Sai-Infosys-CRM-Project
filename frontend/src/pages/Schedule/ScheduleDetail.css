@@ -1296,3 +1296,80 @@
         padding: 5px 8px;
     }
 }
+
+.task-process-completed {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 12px;
+    border: 1px solid #a7f3d0;
+    border-radius: 999px;
+    color: #047857;
+    background: #ecfdf5;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.payment-confirm-overlay {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.52);
+}
+
+.payment-confirm-dialog {
+    width: min(460px, 100%);
+    padding: 24px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+}
+
+.payment-confirm-dialog h2 {
+    margin: 0 0 10px;
+    color: #0f172a;
+    font-size: 20px;
+}
+
+.payment-confirm-dialog p {
+    margin: 0;
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.payment-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.payment-confirm-actions button {
+    padding: 9px 14px;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.payment-confirm-cancel {
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    background: #fff;
+}
+
+.payment-confirm-submit {
+    border: 1px solid #2563eb;
+    color: #fff;
+    background: #2563eb;
+}
+
+.payment-confirm-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}

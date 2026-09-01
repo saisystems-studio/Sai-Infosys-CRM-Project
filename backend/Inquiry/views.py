@@ -16,6 +16,8 @@ from .serializers import (
     PaymentRecordSerializer,
     InquiryTaskDetailSerializer,
     InquiryTaskProgressSerializer,
+    InvoiceAmountSerializer,
+    CallbackRescheduleSerializer,
     PaymentPendingSerializer,
     TaskProgressSaveSerializer,
 )
@@ -23,7 +25,9 @@ from .task_progress import (
     can_read_inquiry_task,
     move_inquiry_to_payment_pending,
     remove_active_inquiry_task,
+    reschedule_callback,
     save_inquiry_progress,
+    save_invoice_amount,
     start_inquiry_task,
 )
 from .payment_ledger import approve_payment_detail, record_payment
@@ -214,6 +218,28 @@ class InquiryViewSet(
             user=request.user,
         )
         return Response(status=204)
+
+    @action(detail=True, methods=["post"], url_path="invoice-amount")
+    def invoice_amount(self, request, pk=None):
+        serializer = InvoiceAmountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        product = save_invoice_amount(
+            inquiry=self.get_object(),
+            user=request.user,
+            invoice_amount=serializer.validated_data["invoice_amount"],
+        )
+        return Response({"invoice_amount": f"{product.Invoice_Amount:.2f}"})
+
+    @action(detail=True, methods=["post"], url_path="reschedule-callback")
+    def reschedule_callback(self, request, pk=None):
+        serializer = CallbackRescheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        progress = reschedule_callback(
+            inquiry=self.get_object(),
+            user=request.user,
+            reschedule_at=serializer.validated_data["reschedule_at"],
+        )
+        return Response(InquiryTaskProgressSerializer(progress).data)
 
     @action(detail=True, methods=["post"], url_path="move-to-payment-pending")
     def move_to_payment_pending(self, request, pk=None):

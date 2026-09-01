@@ -77,9 +77,76 @@ def _required_status(name):
 
 
 @transaction.atomic
+def save_invoice_amount(*, inquiry, user, invoice_amount):
+    """Persist the invoice amount for the inquiry's primary product row."""
+    _require_writable_actor(user, inquiry, lock=True)
+    product = (
+        inquiry.inquiryproductdetails_tbl_set
+        .select_for_update()
+        .order_by("pk")
+        .first()
+    )
+    if not product:
+        raise ValidationError("This inquiry has no product details.")
+
+    product.Invoice_Amount = invoice_amount
+    product.save(update_fields=["Invoice_Amount"])
+    return product
+
+
+@transaction.atomic
+def reschedule_callback(*, inquiry, user, reschedule_at):
+    """Record a new callback without changing any active task session."""
+    resource = _require_writable_actor(user, inquiry, lock=True)
+    if (
+        inquiry.Status_Id
+        and inquiry.Status_Id.status_type_name.strip().lower()
+        == PAYMENT_PENDING_STATUS_NAME.lower()
+    ):
+        raise ValidationError("Payment Pending inquiries cannot be rescheduled.")
+
+    previous_progress = (
+        inquiry.task_progress.select_for_update()
+        .filter(
+            Task_Status=TaskStatus.RESCHEDULED,
+            End_Time__isnull=False,
+        )
+        .order_by("-Start_Time")
+        .first()
+    )
+    if not previous_progress:
+        raise ValidationError("No rescheduled callback was found for this inquiry.")
+
+    now = _local_timestamp()
+    progress = InquiryTaskProgress.objects.create(
+        Inquiry_Id=inquiry,
+        Resource_Id=resource,
+        Work_Date=now.date(),
+        Start_Time=now,
+        End_Time=now,
+        Reschedule_At=reschedule_at,
+        Progress_Notes="Callback rescheduled from reminder",
+        Task_Status=TaskStatus.RESCHEDULED,
+        Created_By=user,
+    )
+    inquiry.Shedule_Date = reschedule_at.date()
+    inquiry.save(update_fields=["Shedule_Date"])
+    return progress
+
+
+@transaction.atomic
 def start_inquiry_task(*, inquiry, user):
     """Start the assigned resource's task, provided they have no active task."""
     resource = _require_writable_actor(user, inquiry, lock=True)
+
+    if (
+        inquiry.Status_Id
+        and inquiry.Status_Id.status_type_name.strip().lower()
+        == PAYMENT_PENDING_STATUS_NAME.lower()
+    ):
+        raise ValidationError(
+            "This inquiry is already in Payment Pending. The task process is completed."
+        )
 
     if InquiryTaskProgress.objects.filter(
         Resource_Id=resource,
@@ -212,8 +279,8 @@ def move_inquiry_to_payment_pending(
     if product:
         update_fields = ["Revenue_Amount", "Payment_Status"]
         if invoice_amount is not None:
-            product.Amount = invoice_amount
-            update_fields.append("Amount")
+            product.Invoice_Amount = invoice_amount
+            update_fields.append("Invoice_Amount")
         product.Revenue_Amount = revenue_amount
         product.Payment_Status = "Pending"
         product.save(update_fields=update_fields)

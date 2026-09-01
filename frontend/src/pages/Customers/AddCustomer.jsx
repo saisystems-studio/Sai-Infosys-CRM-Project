@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { mapPincodeResponse } from "./pincodeLookup.js";
+import { updateContactField } from "./customerContacts.js";
 import "./AddCustomer.css";
 
 // Configure axios with token interceptor
@@ -371,11 +372,7 @@ export default function AddCustomer({
 
   // Contact Handlers
   const handleContactChange = (id, field, value) => {
-    setContacts((prev) =>
-      prev.map((contact) =>
-        contact.id === id ? { ...contact, [field]: value } : contact,
-      ),
-    );
+    setContacts((prev) => updateContactField(prev, id, field, value));
     setErrorMessage("");
   };
 
@@ -849,7 +846,7 @@ export default function AddCustomer({
                           handleContactChange(
                             contact.id,
                             "contact_name",
-                            e.target.value.replace(/\D/g, "").slice(0, 10),
+                            e.target.value,
                           )
                         }
                         placeholder="Enter contact name"

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from Customers.models import CustomerDetails
@@ -60,6 +61,25 @@ class PaymentPendingSerializer(serializers.Serializer):
         required=False,
         default=0,
     )
+
+
+class InvoiceAmountSerializer(serializers.Serializer):
+    invoice_amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0"),
+    )
+
+
+class CallbackRescheduleSerializer(serializers.Serializer):
+    reschedule_at = serializers.DateTimeField()
+
+    def validate_reschedule_at(self, value):
+        if value.date() < timezone.now().date():
+            raise serializers.ValidationError(
+                "Choose a future callback date and time."
+            )
+        return value
 
 
 class PaymentApprovalSerializer(serializers.ModelSerializer):
@@ -156,6 +176,13 @@ class InquiryProductListSerializer(serializers.ModelSerializer):
         read_only=True,
         allow_null=True,
     )
+    invoice_amount = serializers.DecimalField(
+        source="Invoice_Amount",
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+        allow_null=True,
+    )
     product_name = serializers.SerializerMethodField()
     product_type_name = serializers.SerializerMethodField()
 
@@ -195,6 +222,7 @@ class InquiryProductListSerializer(serializers.ModelSerializer):
             "qty",
             "rate",
             "amount",
+            "invoice_amount",
             "revenue_amount",
             "requirement",
             "Quantity",
@@ -373,6 +401,11 @@ class InquiryListSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not can_update_inquiry_task(request.user, obj):
             return False
+        if (
+            obj.Status_Id
+            and obj.Status_Id.status_type_name.strip().lower() == "payment pending"
+        ):
+            return False
         return obj.task_progress.filter(
             End_Time__isnull=False,
             Task_Status=TaskStatus.PROGRESS_SAVED,
@@ -480,12 +513,14 @@ class InquiryTaskDetailSerializer(InquiryListSerializer):
     task_progress = serializers.SerializerMethodField()
     active_session = serializers.SerializerMethodField()
     can_update_task = serializers.SerializerMethodField()
+    invoice_amount = serializers.SerializerMethodField()
 
     class Meta(InquiryListSerializer.Meta):
         fields = InquiryListSerializer.Meta.fields + [
             "task_progress",
             "active_session",
             "can_update_task",
+            "invoice_amount",
         ]
 
     def get_task_progress(self, obj):
@@ -500,7 +535,16 @@ class InquiryTaskDetailSerializer(InquiryListSerializer):
 
     def get_can_update_task(self, obj):
         request = self.context.get("request")
+        if (
+            obj.Status_Id
+            and obj.Status_Id.status_type_name.strip().lower() == "payment pending"
+        ):
+            return False
         return bool(request and can_update_inquiry_task(request.user, obj))
+
+    def get_invoice_amount(self, obj):
+        product = self.get_product_records(obj).first()
+        return product.Invoice_Amount if product else None
 
 
 # ============================================================

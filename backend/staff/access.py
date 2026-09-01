@@ -79,11 +79,11 @@ class HasMenuPermission(BasePermission):
 
 
 def menu_permission(*menu_names):
-    return type(
-        "ConfiguredMenuPermission",
-        (HasMenuPermission,),
-        {"menu_names": menu_names},
-    )
+    class ConfiguredMenuPermission(HasMenuPermission):
+        def get_menu_names(self, request, view):
+            return menu_names
+
+    return ConfiguredMenuPermission
 
 
 def master_lookup_permission(*master_menu_names):

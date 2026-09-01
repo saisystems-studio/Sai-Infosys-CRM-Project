@@ -1,5 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+from .document_files import (
+    delete_media_file_safely,
+    staff_document_upload_to,
+    validate_staff_document,
+)
 
 
 # ============================================================
@@ -82,6 +90,45 @@ class StaffDetails(models.Model):
 
     def __str__(self):
         return self.Full_Name
+
+
+class StaffDocument(models.Model):
+    Id = models.AutoField(primary_key=True, db_column="Id")
+    Staff_Id = models.ForeignKey(
+        StaffDetails,
+        on_delete=models.CASCADE,
+        related_name="Documents",
+        db_column="Staff_Id",
+    )
+    Document_File = models.FileField(
+        upload_to=staff_document_upload_to,
+        validators=[validate_staff_document],
+        db_column="Document_File",
+    )
+    Original_Name = models.CharField(max_length=255, db_column="Original_Name")
+    Mime_Type = models.CharField(max_length=150, db_column="Mime_Type")
+    File_Size = models.PositiveBigIntegerField(db_column="File_Size")
+    Uploaded_By = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="staff_documents_uploaded",
+        db_column="Uploaded_By",
+    )
+    Uploaded_On = models.DateTimeField(auto_now_add=True, db_column="Uploaded_On")
+
+    class Meta:
+        db_table = "StaffDocument_tbl"
+        ordering = ["-Uploaded_On", "-Id"]
+
+    def __str__(self):
+        return self.Original_Name
+
+
+@receiver(post_delete, sender=StaffDocument)
+def remove_staff_document_file(sender, instance, **kwargs):
+    delete_media_file_safely(instance.Document_File)
 
 
 # ============================================================

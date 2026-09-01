@@ -6,6 +6,8 @@ from django.http import Http404
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from masters.models import StatusTypeMaster
+
 from .models import InquiryProductDetails_tbl, PaymentDetail
 
 
@@ -68,11 +70,36 @@ def refresh_product_payment_status(product):
     return product
 
 
+def _mark_inquiry_complete_if_all_products_settled(inquiry, user):
+    if inquiry is None:
+        return
+
+    related_products = inquiry.inquiryproductdetails_tbl_set.all()
+    if not related_products.exists():
+        return
+
+    unsettled = related_products.filter(Payment_Status="Pending").count()
+    if unsettled > 0:
+        return
+
+    status = StatusTypeMaster.objects.filter(
+        status_type_name__iexact="Completed"
+    ).first()
+    if status is None:
+        status = StatusTypeMaster.objects.create(
+            status_type_name="Completed",
+            created_by=user,
+        )
+
+    inquiry.Status_Id = status
+    inquiry.save(update_fields=["Status_Id"])
+
+
 @transaction.atomic
 def approve_payment_detail(*, payment_detail_id, user):
     try:
         detail = PaymentDetail.objects.select_for_update().select_related(
-            "Inquiry_Product"
+            "Inquiry_Product", "Inquiry_Product__Inquiry_Id"
         ).get(pk=payment_detail_id)
     except PaymentDetail.DoesNotExist as error:
         raise Http404("Payment transaction not found.") from error
@@ -84,4 +111,5 @@ def approve_payment_detail(*, payment_detail_id, user):
     detail.Approved_On = timezone.now()
     detail.save(update_fields=["Approval_Status", "Approved_By", "Approved_On"])
     refresh_product_payment_status(detail.Inquiry_Product)
+    _mark_inquiry_complete_if_all_products_settled(detail.Inquiry_Product.Inquiry_Id, user)
     return detail

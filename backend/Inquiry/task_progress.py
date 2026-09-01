@@ -13,6 +13,7 @@ from .models import InquiryTaskProgress, TaskStatus
 
 IN_PROGRESS_STATUS_NAME = "In Progress"
 PAYMENT_PENDING_STATUS_NAME = "Payment Pending"
+COMPLETED_STATUS_NAME = "Completed"
 IST = ZoneInfo("Asia/Kolkata")
 
 
@@ -74,6 +75,18 @@ def _required_status(name):
     if not status:
         raise ValidationError(f"Required inquiry status '{name}' is not configured.")
     return status
+
+
+def _completed_status(user):
+    status = StatusTypeMaster.objects.filter(
+        status_type_name__iexact=COMPLETED_STATUS_NAME
+    ).first()
+    if status:
+        return status
+    return StatusTypeMaster.objects.create(
+        status_type_name=COMPLETED_STATUS_NAME,
+        created_by=user,
+    )
 
 
 @transaction.atomic
@@ -257,9 +270,9 @@ def remove_active_inquiry_task(*, inquiry, user):
 
 @transaction.atomic
 def move_inquiry_to_payment_pending(
-    *, inquiry, user, invoice_amount=None, revenue_amount=0
+    *, inquiry, user, invoice_amount=None, revenue_amount=0, unpaid_service=False
 ):
-    """Mark an inquiry payment pending after the assigned resource saves a task."""
+    """Finish a saved task as payment pending or as an unpaid service."""
     resource = _require_writable_actor(user, inquiry, lock=True)
     has_saved_task = InquiryTaskProgress.objects.filter(
         Inquiry_Id=inquiry,
@@ -278,13 +291,23 @@ def move_inquiry_to_payment_pending(
     )
     if product:
         update_fields = ["Revenue_Amount", "Payment_Status"]
-        if invoice_amount is not None:
+        if unpaid_service:
+            product.Invoice_Amount = 0
+            product.Revenue_Amount = 0
+            product.Payment_Status = "Not Required"
+            update_fields.append("Invoice_Amount")
+        elif invoice_amount is not None:
             product.Invoice_Amount = invoice_amount
             update_fields.append("Invoice_Amount")
-        product.Revenue_Amount = revenue_amount
-        product.Payment_Status = "Pending"
+        if not unpaid_service:
+            product.Revenue_Amount = revenue_amount
+            product.Payment_Status = "Pending"
         product.save(update_fields=update_fields)
 
-    inquiry.Status_Id = _required_status(PAYMENT_PENDING_STATUS_NAME)
+    inquiry.Status_Id = (
+        _completed_status(user)
+        if unpaid_service
+        else _required_status(PAYMENT_PENDING_STATUS_NAME)
+    )
     inquiry.save(update_fields=["Status_Id"])
     return inquiry

@@ -5,6 +5,8 @@ import {
   buildMenuAccess,
   canPerform,
   hasFullMenuAccess,
+  loadActiveMenu,
+  saveActiveMenu,
   selectInitialMenu,
 } from "./menuAccess.js";
 
@@ -64,4 +66,25 @@ test("the permitted Overview dashboard is the initial page after login", () => {
   ];
 
   assert.equal(selectInitialMenu(menus, ""), "Overview");
+});
+
+test("a refreshed temporary detail page returns to its permitted parent menu", () => {
+  const menus = [
+    { Id: 1, Menu_Name: "Overview", parent_id: null },
+    { Id: 8, Menu_Name: "Schedule", parent_id: null },
+  ];
+
+  assert.equal(selectInitialMenu(menus, "Schedule Detail"), "Schedule");
+});
+
+test("active menu is saved and restored for a browser refresh", () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+
+  saveActiveMenu("Customer List", storage);
+
+  assert.equal(loadActiveMenu(storage), "Customer List");
 });

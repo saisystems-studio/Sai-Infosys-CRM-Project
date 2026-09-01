@@ -257,3 +257,47 @@ class InquiryTaskWriteApiTests(APITestCase):
         self.assertEqual(str(product.Amount), "100.00")
         self.assertEqual(str(product.Revenue_Amount), "2500.00")
         self.assertEqual(product.Payment_Status, "Pending")
+
+    def test_unpaid_service_completes_with_zero_amounts_without_payment_pending(self):
+        InquiryTaskProgress.objects.create(
+            Inquiry_Id=self.inquiry,
+            Resource_Id=self.resource,
+            Work_Date=date(2026, 8, 27),
+            Start_Time="2026-08-27T10:00:00Z",
+            End_Time="2026-08-27T10:15:00Z",
+            Progress_Notes="Service completed without charge.",
+            Task_Status=TaskStatus.PROGRESS_SAVED,
+            Created_By=self.user,
+        )
+        product = InquiryProductDetails_tbl.objects.create(
+            Inquiry_Id=self.inquiry,
+            Quantity=1,
+            Rate=100,
+            Amount=100,
+            Invoice_Amount=999,
+            Revenue_Amount=888,
+            Created_By=self.user,
+        )
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            self.payment_pending_url(),
+            {
+                "invoice_amount": "3000.00",
+                "revenue_amount": "2500.00",
+                "unpaid_service": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.inquiry.refresh_from_db()
+        product.refresh_from_db()
+        self.assertEqual(self.inquiry.Status_Id.status_type_name, "Completed")
+        self.assertEqual(
+            StatusTypeMaster.objects.filter(status_type_name__iexact="Completed").count(),
+            1,
+        )
+        self.assertEqual(str(product.Invoice_Amount), "0.00")
+        self.assertEqual(str(product.Revenue_Amount), "0.00")
+        self.assertEqual(product.Payment_Status, "Not Required")

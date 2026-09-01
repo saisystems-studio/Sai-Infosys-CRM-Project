@@ -20,6 +20,7 @@ from .serializers import (
     CallbackRescheduleSerializer,
     PaymentPendingSerializer,
     TaskProgressSaveSerializer,
+    CompletedInquiryReportSerializer,
 )
 from .task_progress import (
     can_read_inquiry_task,
@@ -31,7 +32,7 @@ from .task_progress import (
     start_inquiry_task,
 )
 from .payment_ledger import approve_payment_detail, record_payment
-from staff.access import HasMenuPermission, get_staff, has_full_access, normalize_role
+from staff.access import HasMenuPermission, get_staff, has_full_access, menu_permission, normalize_role
 from staff.models import StaffDetails
 from .models import InquiryProductDetails_tbl, PaymentDetail
 
@@ -68,7 +69,15 @@ class InquiryViewSet(
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        if self.action in ("task_detail", "schedule"):
+        if self.action in ("list", "retrieve", "update", "partial_update", "destroy"):
+            staff = get_staff(self.request.user)
+            if not has_full_access(self.request.user, staff):
+                queryset = (
+                    queryset.filter(Resource_Id=staff)
+                    if staff is not None
+                    else queryset.none()
+                )
+        if self.action in ("task_detail", "schedule", "completed_inquiry_report"):
             return queryset.prefetch_related("task_progress__Resource_Id")
         return queryset
 
@@ -89,6 +98,14 @@ class InquiryViewSet(
         if role not in {"admin", "super admin"}:
             raise PermissionDenied(
                 "Only Admin and Super Admin can view payment approvals."
+            )
+
+    def _require_received_details_viewer(self, request):
+        staff = get_staff(request.user)
+        role = normalize_role(getattr(staff, "Role", ""))
+        if role not in {"admin", "super admin"}:
+            raise PermissionDenied(
+                "Only Admin and Super Admin can access received payment details."
             )
 
     def _require_admin(self, request):
@@ -150,6 +167,11 @@ class InquiryViewSet(
             PaymentDetail.objects
             .select_related("Inquiry_Product__Inquiry_Id__Customer_Id")
             .annotate(
+                product_invoice_amount=Coalesce(
+                    F("Inquiry_Product__Invoice_Amount"),
+                    F("Inquiry_Product__Amount"),
+                    output_field=money_field,
+                ),
                 total_paid=Coalesce(
                     Subquery(total_paid, output_field=money_field),
                     Value(0, output_field=money_field),
@@ -250,6 +272,7 @@ class InquiryViewSet(
             user=request.user,
             invoice_amount=serializer.validated_data.get("invoice_amount"),
             revenue_amount=serializer.validated_data["revenue_amount"],
+            unpaid_service=serializer.validated_data["unpaid_service"],
         )
         return Response(InquiryListSerializer(inquiry, context={"request": request}).data)
 
@@ -261,7 +284,7 @@ class InquiryViewSet(
 
     @action(detail=False, methods=["get"], url_path="payment-received-details")
     def payment_received_details(self, request):
-        self._require_admin(request)
+        self._require_received_details_viewer(request)
         records = (
             self._payment_summary_records()
             .filter(Payment_Status="Received")
@@ -365,5 +388,32 @@ class InquiryViewSet(
             inquiries,
             many=True,
             context={"request": request}
+        )
+        return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="completed-inquiry-report",
+        permission_classes=[
+            IsAuthenticated,
+            menu_permission("Completed Inquery Report"),
+        ],
+    )
+    def completed_inquiry_report(self, request):
+        staff = get_staff(request.user)
+        role = normalize_role(getattr(staff, "Role", ""))
+        inquiries = self.get_queryset().filter(
+            Status_Id__status_type_name__iexact="Completed"
+        )
+        if not request.user.is_superuser and role != "super admin":
+            if staff is None:
+                return Response(
+                    {"detail": "Staff details not found for logged-in user."},
+                    status=400,
+                )
+            inquiries = inquiries.filter(Resource_Id=staff)
+        serializer = CompletedInquiryReportSerializer(
+            inquiries, many=True, context={"request": request}
         )
         return Response(serializer.data)

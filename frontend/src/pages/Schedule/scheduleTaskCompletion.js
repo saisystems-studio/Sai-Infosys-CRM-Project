@@ -1,5 +1,7 @@
 export function isPaymentPendingStatus(statusName) {
-  return String(statusName || "").trim().toLowerCase() === "payment pending";
+  return ["payment pending", "completed"].includes(
+    String(statusName || "").trim().toLowerCase(),
+  );
 }
 
 export function canAccessTaskActions(canUpdateTask, statusName) {

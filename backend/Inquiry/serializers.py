@@ -7,6 +7,7 @@ from rest_framework import serializers
 from Customers.models import CustomerDetails
 from masters.models import ProductTypeMaster, SourceTypeMaster, StatusTypeMaster
 from staff.models import StaffDetails
+from staff.access import get_staff, has_full_access
 from .models import (
     InquiryDetails_tbl,
     InquiryProductDetails_tbl,
@@ -48,6 +49,7 @@ class InquiryProductInputSerializer(serializers.Serializer):
 
 
 class PaymentPendingSerializer(serializers.Serializer):
+    unpaid_service = serializers.BooleanField(required=False, default=False)
     invoice_amount = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -88,6 +90,8 @@ class PaymentApprovalSerializer(serializers.ModelSerializer):
         source="Inquiry_Id.Customer_Id.company_name",
         allow_null=True,
     )
+    product_id = serializers.IntegerField(source="ProductType_Id_id", read_only=True, allow_null=True)
+    product_name = serializers.SerializerMethodField()
     requirement = serializers.CharField(source="Requirment", allow_null=True)
     amount = serializers.DecimalField(source="Amount", max_digits=12, decimal_places=2)
     revenue_amount = serializers.DecimalField(
@@ -100,6 +104,7 @@ class PaymentApprovalSerializer(serializers.ModelSerializer):
     remaining_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     latest_payment_type = serializers.CharField(read_only=True, allow_null=True)
     latest_payment_date = serializers.DateTimeField(read_only=True, allow_null=True)
+    created_on = serializers.DateTimeField(source="Created_On", read_only=True, allow_null=True)
 
     class Meta:
         model = InquiryProductDetails_tbl
@@ -108,6 +113,8 @@ class PaymentApprovalSerializer(serializers.ModelSerializer):
             "Inquiry_Id",
             "customer_name",
             "company_name",
+            "product_id",
+            "product_name",
             "requirement",
             "amount",
             "revenue_amount",
@@ -116,7 +123,13 @@ class PaymentApprovalSerializer(serializers.ModelSerializer):
             "latest_payment_type",
             "latest_payment_date",
             "payment_status",
+            "created_on",
         ]
+
+    def get_product_name(self, obj):
+        if obj.ProductType_Id:
+            return obj.ProductType_Id.product_type_name or "Product"
+        return "Product"
 
 
 class PaymentPendingListSerializer(PaymentApprovalSerializer):
@@ -128,7 +141,15 @@ class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField(source="Inquiry_Product_id", read_only=True)
     customer_name = serializers.CharField(source="Inquiry_Product.Inquiry_Id.Customer_Id.customer_name")
     company_name = serializers.CharField(source="Inquiry_Product.Inquiry_Id.Customer_Id.company_name", allow_null=True)
+    product_name = serializers.SerializerMethodField()
     requirement = serializers.CharField(source="Inquiry_Product.Requirment", allow_null=True)
+    invoice_amount = serializers.DecimalField(
+        source="product_invoice_amount",
+        max_digits=12,
+        decimal_places=2,
+        read_only=True,
+        allow_null=True,
+    )
     revenue_amount = serializers.DecimalField(source="Inquiry_Product.Revenue_Amount", max_digits=12, decimal_places=2)
     payment_amount = serializers.DecimalField(source="Amount", max_digits=12, decimal_places=2)
     payment_type = serializers.CharField(source="Payment_Type", read_only=True)
@@ -144,12 +165,16 @@ class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentDetail
         fields = [
-            "id", "product_id", "customer_name", "company_name", "requirement",
-            "revenue_amount", "payment_amount", "payment_type", "payment_date",
+            "id", "product_id", "customer_name", "company_name", "product_name",
+            "requirement", "invoice_amount", "revenue_amount", "payment_amount", "payment_type", "payment_date",
             "total_paid", "remaining_balance", "payment_status", "is_latest_payment",
             "approval_status", "approved_by", "approved_on",
         ]
 
+    def get_product_name(self, obj):
+        if obj.Inquiry_Product and obj.Inquiry_Product.ProductType_Id:
+            return obj.Inquiry_Product.ProductType_Id.product_type_name or "Product"
+        return "Product"
 
 class PaymentRecordSerializer(serializers.Serializer):
     amount = serializers.DecimalField(
@@ -547,6 +572,13 @@ class InquiryTaskDetailSerializer(InquiryListSerializer):
         return product.Invoice_Amount if product else None
 
 
+class CompletedInquiryReportSerializer(InquiryListSerializer):
+    task_progress = InquiryTaskProgressSerializer(many=True, read_only=True)
+
+    class Meta(InquiryListSerializer.Meta):
+        fields = InquiryListSerializer.Meta.fields + ["task_progress"]
+
+
 # ============================================================
 # INQUIRY CREATE SERIALIZER
 # ============================================================
@@ -584,6 +616,14 @@ class InquiryCreateSerializer(serializers.Serializer):
         many=True,
         allow_empty=False,
     )
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if request and self.instance is None:
+            staff = get_staff(request.user)
+            if not has_full_access(request.user, staff) and staff is not None:
+                attrs["resource_id"] = staff.pk
+        return attrs
 
     def validate_resource_id(self, value):
         if value is None:

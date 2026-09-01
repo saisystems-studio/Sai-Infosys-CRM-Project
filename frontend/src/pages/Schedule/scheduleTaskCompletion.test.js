@@ -12,6 +12,11 @@ test("payment pending marks the task process as completed", () => {
   assert.equal(isPaymentPendingStatus("In Progress"), false);
 });
 
+test("completed inquiry marks the task process as completed", () => {
+  assert.equal(isPaymentPendingStatus("Completed"), true);
+  assert.equal(canAccessTaskActions(true, "Completed"), false);
+});
+
 test("completed inquiries cannot access task actions", () => {
   assert.equal(canAccessTaskActions(true, "Payment Pending"), false);
   assert.equal(canAccessTaskActions(true, "In Progress"), true);

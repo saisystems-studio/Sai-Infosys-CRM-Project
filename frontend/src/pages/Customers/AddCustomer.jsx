@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { mapPincodeResponse } from "./pincodeLookup.js";
-import { updateContactField } from "./customerContacts.js";
+import {
+  getContactNumberError,
+  updateContactField,
+} from "./customerContacts.js";
 import "./AddCustomer.css";
 
 // Configure axios with token interceptor
@@ -449,8 +452,9 @@ export default function AddCustomer({
       if (!contact.contact_name) {
         newErrors[`contact_name_${index}`] = "Contact name is required";
       }
-      if (!contact.contact_number) {
-        newErrors[`contact_number_${index}`] = "Contact number is required";
+      const contactNumberError = getContactNumberError(contact.contact_number);
+      if (contactNumberError) {
+        newErrors[`contact_number_${index}`] = contactNumberError;
       }
     });
 
@@ -863,6 +867,8 @@ export default function AddCustomer({
                       <label>Contact Number {index + 1} *</label>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]{10}"
                         maxLength={10}
                         value={contact.contact_number}
                         onChange={(e) =>

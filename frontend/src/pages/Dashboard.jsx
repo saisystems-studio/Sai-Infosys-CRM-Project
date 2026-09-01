@@ -22,13 +22,19 @@ import ScheduleDetail from "./Schedule/ScheduleDetail";
 import PaymentApproval from "./PaymentApproval";
 import PaymentReceivedDetails from "./PaymentReceivedDetails";
 import PaymentPending from "./PaymentPending";
-import { canRecordPayment, canViewPaymentApproval } from "./paymentApprovalAccess";
+import CompletedInquiryReport from "./CompletedInquiryReport/CompletedInquiryReport.jsx";
+import {
+  canViewPaymentApproval,
+  canViewPaymentPending,
+} from "./paymentApprovalAccess";
 import TaskReminder from "../TaskReminder";
 
 import { createStaffMode, editStaffMode } from "./Staff/staffNavigation";
 import {
   buildMenuAccess,
   hasFullMenuAccess,
+  loadActiveMenu,
+  saveActiveMenu,
   selectInitialMenu,
 } from "../menuAccess";
 
@@ -178,7 +184,7 @@ function Dashboard() {
      STATES
   ------------------------------------------------------- */
 
-  const [active, setActive] = useState("");
+  const [active, setActive] = useState(() => loadActiveMenu(sessionStorage));
   const [menus, setMenus] = useState([]);
   const [openMenus, setOpenMenus] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -209,6 +215,10 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const dashboardRole = normalizeRole(user?.role || user?.user_type);
   const isSuperAdmin = dashboardRole === "super admin";
+
+  useEffect(() => {
+    saveActiveMenu(active, sessionStorage);
+  }, [active]);
 
   /* =======================================================
      LOAD USER + GREETING + STAFF PERMISSIONS
@@ -329,19 +339,20 @@ function Dashboard() {
         const isAdmin = loggedInRole === "admin";
         const canViewPaymentApprovalMenu =
           canViewPaymentApproval(loggedInUser);
-        const canRecordPaymentMenu = canRecordPayment(loggedInUser);
+        const canViewPaymentPendingMenu = canViewPaymentPending(loggedInUser);
+        const canViewPaymentReceivedMenu = isSuperAdmin || isAdmin;
         const activeMenus = allMenus
           .filter((menu) => menu.Is_Active === true)
           .filter(
             (menu) =>
-              !["Payment Approval", "Payment Pending", "Payment Received Details"].includes(
+              !["Payment Approval", "Payment Pending", "Payment Received Details", "Payement Details Report"].includes(
                 menu.Menu_Name,
               ) ||
               (menu.Menu_Name === "Payment Approval"
                 ? canViewPaymentApprovalMenu
                 : menu.Menu_Name === "Payment Pending"
-                  ? canRecordPaymentMenu
-                : isAdmin),
+                  ? canViewPaymentPendingMenu
+                : canViewPaymentReceivedMenu),
           );
 
         console.log(`📋 Total active menus: ${activeMenus.length}`);
@@ -512,12 +523,36 @@ function Dashboard() {
      PARENT MENUS
   ======================================================= */
 
-  const parentMenus = menus
+  const displayMenus = (() => {
+    const paymentReceivedMenu = menus.find(
+      (menu) => ["Payment Received Details", "Payement Details Report"].includes(menu.Menu_Name),
+    );
+    if (!paymentReceivedMenu || menus.some((menu) => menu.Menu_Name === "Reports")) {
+      return menus;
+    }
+
+    return [
+      ...menus.filter((menu) => !["Payment Received Details", "Payement Details Report"].includes(menu.Menu_Name)),
+      {
+        Id: "reports-root",
+        Menu_Name: "Reports",
+        parent_id: null,
+        Display_Order: 9999,
+        Icon: "chart",
+      },
+      {
+        ...paymentReceivedMenu,
+        parent_id: "reports-root",
+      },
+    ];
+  })();
+
+  const parentMenus = displayMenus
     .filter((menu) => menu.parent_id === null)
     .sort((a, b) => a.Display_Order - b.Display_Order);
 
   const getChildMenus = (parentId) => {
-    return menus
+    return displayMenus
       .filter((menu) => menu.parent_id === parentId)
       .sort((a, b) => a.Display_Order - b.Display_Order);
   };
@@ -555,6 +590,7 @@ function Dashboard() {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem("crm_active_menu");
     localStorage.removeItem("crm_access_token");
     localStorage.removeItem("crm_refresh_token");
     localStorage.removeItem("crm_user");
@@ -602,6 +638,12 @@ function Dashboard() {
     setSelectedScheduleInquiryId(inquiryId);
     setAutoStartScheduleTask(Boolean(options.autoStartTask));
     setActive("Schedule Detail");
+  };
+
+  const handleViewCompletedInquiry = (inquiryId) => {
+    setSelectedScheduleInquiryId(inquiryId);
+    setAutoStartScheduleTask(false);
+    setActive("Completed Inquiry Detail");
   };
 
   /* =======================================================
@@ -747,12 +789,6 @@ function Dashboard() {
             <Icon name="menu" />
           </button>
 
-          <div className="search-box">
-            <Icon name="search" />
-            <input placeholder="Search contacts, leads, deals..." />
-            <kbd>⌘ K</kbd>
-          </div>
-
           <div className="top-actions">
             <button className="icon-button" aria-label="Notifications">
               <Icon name="bell" />
@@ -851,11 +887,21 @@ function Dashboard() {
               }}
               autoStartTask={autoStartScheduleTask}
             />
+          ) : active === "Completed Inquery Report" ? (
+            <CompletedInquiryReport onViewDetails={handleViewCompletedInquiry} />
+          ) : active === "Completed Inquiry Detail" ? (
+            <ScheduleDetail
+              inquiryId={selectedScheduleInquiryId}
+              onBack={() => {
+                setSelectedScheduleInquiryId(null);
+                setActive("Completed Inquery Report");
+              }}
+            />
           ) : active === "Payment Approval" ? (
             <PaymentApproval />
           ) : active === "Payment Pending" ? (
             <PaymentPending />
-          ) : active === "Payment Received Details" ? (
+          ) : ["Payment Received Details", "Payement Details Report"].includes(active) ? (
             <PaymentReceivedDetails />
           ) : (
             <>

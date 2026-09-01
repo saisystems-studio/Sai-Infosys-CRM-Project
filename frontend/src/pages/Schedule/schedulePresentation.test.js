@@ -4,8 +4,10 @@ import * as schedulePresentation from "./schedulePresentation.js";
 
 import {
   formatTaskDuration,
+  getDefaultScheduleDateRange,
   getScheduleDateState,
   getScheduleInitials,
+  getTodayDateString,
   getTotalTaskDurationSeconds,
   hasScheduleAdminAccess,
 } from "./schedulePresentation.js";
@@ -26,6 +28,17 @@ test("schedule dates are classified relative to the current day", () => {
   assert.equal(getScheduleDateState("2026-08-27", today), "today");
   assert.equal(getScheduleDateState("2026-08-28", today), "upcoming");
   assert.equal(getScheduleDateState("", today), "unscheduled");
+});
+
+test("schedule filters default to the current day only", () => {
+  const today = new Date("2026-08-27T10:00:00");
+
+  assert.equal(getTodayDateString(today), "2026-08-27");
+  assert.deepEqual(getDefaultScheduleDateRange(today), {
+    fromDate: "2026-08-27",
+    toDate: "2026-08-27",
+    isTodayOnly: true,
+  });
 });
 
 test("customer names produce compact two-letter schedule avatars", () => {

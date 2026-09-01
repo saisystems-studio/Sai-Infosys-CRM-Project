@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./AddStaff.css";
+import {
+  appendStaffDocuments,
+  formatDocumentSize,
+  getStaffEditAssets,
+  removePendingDocument,
+  validateStaffDocuments,
+} from "./staffDocuments";
+import { getStaffPhoneError, normalizeStaffPhone } from "./staffPhone";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -24,6 +32,10 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
   const [menuPermissions, setMenuPermissions] = useState({});
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
+  const [documents, setDocuments] = useState([]);
+  const [existingDocuments, setExistingDocuments] = useState([]);
+  const [documentErrors, setDocumentErrors] = useState([]);
+  const [deletingDocumentId, setDeletingDocumentId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -122,14 +134,12 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
           // STAFF IMAGE
           // ==========================================
 
-          if (staffData.Staff_Image) {
-            const baseUrl = API_URL.replace("/api", "");
-            const cleanPath = String(staffData.Staff_Image).replace(/^\/+/, "");
-
-            setImagePreview(`${baseUrl}/uploads/${cleanPath}`);
-          } else {
-            setImagePreview("");
-          }
+          const editAssets = getStaffEditAssets(staffData, API_URL);
+          setImage(null);
+          setImagePreview(editAssets.imagePreview);
+          setDocuments([]);
+          setDocumentErrors([]);
+          setExistingDocuments(editAssets.documents);
 
           // ==========================================
           // LOAD STAFF PERMISSIONS
@@ -504,9 +514,10 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const nextValue = name === "Phone_Number" ? normalizeStaffPhone(value) : value;
     setFormData((previous) => ({
       ...previous,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked : nextValue,
     }));
   };
 
@@ -515,6 +526,59 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
     if (!file) return;
     setImage(file);
     setImagePreview(URL.createObjectURL(file));
+  };
+
+  const addDocuments = (selectedFiles) => {
+    const { accepted, errors } = validateStaffDocuments(selectedFiles);
+    setDocuments((previous) => [...previous, ...accepted]);
+    setDocumentErrors(errors);
+  };
+
+  const handleDocumentChange = (event) => {
+    addDocuments(event.target.files);
+    event.target.value = "";
+  };
+
+  const handleDocumentDrop = (event) => {
+    event.preventDefault();
+    addDocuments(event.dataTransfer.files);
+  };
+
+  const downloadDocument = async (document) => {
+    try {
+      const token = localStorage.getItem("crm_access_token");
+      const response = await axios.get(document.Download_Url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = document.Original_Name;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Unable to download the document.");
+    }
+  };
+
+  const deleteDocument = async (document) => {
+    if (!window.confirm(`Delete ${document.Original_Name}?`)) return;
+    try {
+      setDeletingDocumentId(document.Id);
+      const token = localStorage.getItem("crm_access_token");
+      await axios.delete(
+        `${API_URL}/staff/${editData.Id}/documents/${document.Id}/`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setExistingDocuments((previous) =>
+        previous.filter((item) => item.Id !== document.Id),
+      );
+    } catch {
+      setError("Unable to delete the document.");
+    } finally {
+      setDeletingDocumentId(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -532,8 +596,9 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
       return;
     }
 
-    if (!formData.Phone_Number.trim()) {
-      setError("Phone Number is required.");
+    const phoneError = getStaffPhoneError(formData.Phone_Number);
+    if (phoneError) {
+      setError(phoneError);
       return;
     }
 
@@ -610,6 +675,7 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
       if (image) {
         data.append("Staff_Image", image);
       }
+      appendStaffDocuments(data, documents);
 
       let response;
       if (isEdit) {
@@ -661,6 +727,8 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
         setMenuPermissions(initialPermissions);
         setImage(null);
         setImagePreview("");
+        setDocuments([]);
+        setDocumentErrors([]);
       }
 
       setTimeout(() => {
@@ -696,10 +764,10 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
       const hasChildrenFlag = menu.children && menu.children.length > 0;
       const isExpanded = expandedMenus.includes(menu.Id);
 
-      let viewState = false;
-      let addState = false;
-      let editState = false;
-      let deleteState = false;
+      let viewState;
+      let addState;
+      let editState;
+      let deleteState;
       let hasPartialView = false;
       let hasPartialAdd = false;
       let hasPartialEdit = false;
@@ -969,7 +1037,76 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                 </label>
                 <small>JPG, PNG or WEBP • Max 2MB</small>
               </div>
+
+              <div
+                className="staff-document-upload"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleDocumentDrop}
+              >
+                <div className="document-upload-copy">
+                  <strong>Staff documents</strong>
+                  <small>PDF, Office, text or image files · Max 10 MB each</small>
+                </div>
+                <label className="document-upload-button">
+                  + Attach documents
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.webp"
+                    onChange={handleDocumentChange}
+                  />
+                </label>
+              </div>
             </div>
+
+            {(existingDocuments.length > 0 || documents.length > 0) && (
+              <div className="staff-document-list">
+                {existingDocuments.map((document) => (
+                  <div className="staff-document-item" key={document.Id}>
+                    <div>
+                      <strong>{document.Original_Name}</strong>
+                      <small>{formatDocumentSize(document.File_Size)}</small>
+                    </div>
+                    <div className="document-actions">
+                      <button type="button" onClick={() => downloadDocument(document)}>
+                        Download
+                      </button>
+                      <button
+                        type="button"
+                        className="document-delete"
+                        disabled={deletingDocumentId === document.Id}
+                        onClick={() => deleteDocument(document)}
+                      >
+                        {deletingDocumentId === document.Id ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {documents.map((document, index) => (
+                  <div className="staff-document-item pending" key={`${document.name}-${index}`}>
+                    <div>
+                      <strong>{document.name}</strong>
+                      <small>{formatDocumentSize(document.size)} · Ready to upload</small>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDocuments((previous) =>
+                          removePendingDocument(previous, index),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {documentErrors.length > 0 && (
+              <div className="document-errors">
+                {documentErrors.map((message) => <span key={message}>{message}</span>)}
+              </div>
+            )}
 
             <div className="form-grid">
               <div className="form-field">
@@ -992,10 +1129,13 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
                   name="Phone_Number"
                   value={formData.Phone_Number}
                   onChange={handleChange}
-                  placeholder="+1 234 567 890"
+                  placeholder="Enter 10-digit phone number"
                   className="form-input"
                 />
               </div>
@@ -1125,7 +1265,7 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                     name="Password"
                     value={formData.Password}
                     onChange={handleChange}
-                    placeholder="Min 6 characters"
+                    placeholder="Enter password"
                     autoComplete="new-password"
                     className="form-input"
                   />

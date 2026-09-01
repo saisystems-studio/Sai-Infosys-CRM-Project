@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   canRecordPayment,
   canMarkPaymentReceived,
+  canViewPaymentPending,
   canViewPaymentApproval,
 } from "./paymentApprovalAccess.js";
 
@@ -20,4 +21,10 @@ test("Super Admin users can mark pending payments as received", () => {
 test("only Admin users can record a payment from Payment Pending", () => {
   assert.equal(canRecordPayment({ role: "Admin" }), true);
   assert.equal(canRecordPayment({ role: "Super Admin" }), false);
+});
+
+test("Admin and Super Admin users can view Payment Pending", () => {
+  assert.equal(canViewPaymentPending({ role: "Admin" }), true);
+  assert.equal(canViewPaymentPending({ role: "Super Admin" }), true);
+  assert.equal(canViewPaymentPending({ role: "Staff" }), false);
 });

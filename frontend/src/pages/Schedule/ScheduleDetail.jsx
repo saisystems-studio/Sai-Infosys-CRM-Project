@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import {
   buildPaymentPendingPayload,
+  getPaymentPendingError,
   validateInvoiceAmount,
   validateRevenueAmount,
 } from "./schedulePaymentPending.js";
@@ -195,6 +196,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
   const [invoiceSaveStatus, setInvoiceSaveStatus] = useState("");
   const lastSavedInvoiceAmount = useRef(null);
   const [revenueAmount, setRevenueAmount] = useState("");
+  const [unpaidService, setUnpaidService] = useState(false);
   const [movingToPaymentPending, setMovingToPaymentPending] = useState(false);
   const [paymentPendingError, setPaymentPendingError] = useState("");
   const [paymentPendingSuccess, setPaymentPendingSuccess] = useState("");
@@ -343,6 +345,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
   useEffect(() => {
     if (
       !inquiryId ||
+      unpaidService ||
       invoiceAmount === lastSavedInvoiceAmount.current ||
       validateInvoiceAmount(invoiceAmount)
     ) {
@@ -369,16 +372,18 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
       invoiceAmount,
       INVOICE_AUTOSAVE_DELAY_MS,
     );
-  }, [getHeaders, inquiryId, invoiceAmount]);
+  }, [getHeaders, inquiryId, invoiceAmount, unpaidService]);
 
   const handleMoveToPaymentPending = async () => {
-    const invoiceValidationError = validateInvoiceAmount(invoiceAmount);
+    const invoiceValidationError = unpaidService
+      ? ""
+      : validateInvoiceAmount(invoiceAmount);
     if (invoiceValidationError) {
       setPaymentPendingError(invoiceValidationError);
       return;
     }
 
-    const validationError = validateRevenueAmount(revenueAmount);
+    const validationError = unpaidService ? "" : validateRevenueAmount(revenueAmount);
     if (validationError) {
       setPaymentPendingError(validationError);
       return;
@@ -391,18 +396,19 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
 
       await axios.post(
         `${API_BASE_URL}/inquiries/${inquiry.id}/move-to-payment-pending/`,
-        buildPaymentPendingPayload(invoiceAmount, revenueAmount),
+        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService),
         { headers: getHeaders() },
       );
 
       await fetchDetailData();
       setShowPaymentPendingConfirmation(false);
-      setPaymentPendingSuccess("Inquiry moved to Payment Pending.");
-    } catch (err) {
-      setPaymentPendingError(
-        err.response?.data?.detail ||
-          "Unable to move this inquiry to Payment Pending.",
+      setPaymentPendingSuccess(
+        unpaidService
+          ? "Unpaid service completed successfully."
+          : "Inquiry moved to Payment Pending.",
       );
+    } catch (err) {
+      setPaymentPendingError(getPaymentPendingError(err, unpaidService));
     } finally {
       setMovingToPaymentPending(false);
     }
@@ -1463,7 +1469,20 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
 
       {inquiry.can_move_to_payment_pending && (
         <div className="detail-payment-panel">
-          <div className="detail-payment-fields">
+          <label className="detail-unpaid-service">
+            <input
+              type="checkbox"
+              checked={unpaidService}
+              onChange={(event) => {
+                setUnpaidService(event.target.checked);
+                setPaymentPendingError("");
+              }}
+              disabled={movingToPaymentPending}
+            />
+            <span>Unpaid Service</span>
+          </label>
+
+          {!unpaidService && <div className="detail-payment-fields">
             <label>
               <span>Invoice Amount</span>
               <div className="detail-payment-input-wrap">
@@ -1505,7 +1524,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
                 />
               </div>
             </label>
-          </div>
+          </div>}
 
           <div className="detail-payment-action">
             {paymentPendingError && (
@@ -1518,7 +1537,9 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
               onClick={() => setShowPaymentPendingConfirmation(true)}
               disabled={movingToPaymentPending}
             >
-              {movingToPaymentPending ? "Moving..." : "Move to Payment Pending"}
+              {movingToPaymentPending
+                ? unpaidService ? "Completing..." : "Moving..."
+                : unpaidService ? "Complete" : "Move to Payment Pending"}
             </button>
           </div>
         </div>
@@ -1543,9 +1564,9 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
           >
             <h2 id="payment-confirm-title">Complete this task process?</h2>
             <p id="payment-confirm-description">
-              Are you sure you want to move this inquiry to Payment Pending?
-              After moving, the task process is completed and you cannot add or
-              update tasks.
+              {unpaidService
+                ? "Are you sure you want to complete this unpaid service? Invoice and revenue amounts will be saved as zero."
+                : "Are you sure you want to move this inquiry to Payment Pending? After moving, the task process is completed and you cannot add or update tasks."}
             </p>
             <div className="payment-confirm-actions">
               <button
@@ -1562,7 +1583,9 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
                 onClick={handleMoveToPaymentPending}
                 disabled={movingToPaymentPending}
               >
-                {movingToPaymentPending ? "Moving..." : "Move to Payment Pending"}
+                {movingToPaymentPending
+                  ? unpaidService ? "Completing..." : "Moving..."
+                  : unpaidService ? "Complete" : "Move to Payment Pending"}
               </button>
             </div>
           </section>

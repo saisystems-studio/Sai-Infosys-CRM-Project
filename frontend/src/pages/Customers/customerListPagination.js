@@ -1,0 +1,1 @@
+export const CUSTOMER_LIST_PAGE_SIZE = 10;

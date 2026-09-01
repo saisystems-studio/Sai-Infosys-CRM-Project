@@ -1,6 +1,25 @@
 const normalizeRole = (role = "") =>
   String(role).trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
 
+export const ACTIVE_MENU_STORAGE_KEY = "crm_active_menu";
+
+export function loadActiveMenu(storage) {
+  try {
+    return storage?.getItem(ACTIVE_MENU_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveActiveMenu(menuName, storage) {
+  if (!menuName) return;
+  try {
+    storage?.setItem(ACTIVE_MENU_STORAGE_KEY, menuName);
+  } catch {
+    // Navigation still works when browser storage is unavailable.
+  }
+}
+
 export function hasFullMenuAccess(user = {}) {
   const role = normalizeRole(user.role);
   if (role === "admin" || role === "super admin") return true;
@@ -24,7 +43,12 @@ export function canPerform(access, menuName, action) {
 }
 
 export function selectInitialMenu(menus = [], currentMenu = "") {
-  if (menus.some((menu) => menu.Menu_Name === currentMenu)) return currentMenu;
+  const refreshFallbacks = {
+    "Schedule Detail": "Schedule",
+    "Completed Inquiry Detail": "Completed Inquery Report",
+  };
+  const restoredMenu = refreshFallbacks[currentMenu] || currentMenu;
+  if (menus.some((menu) => menu.Menu_Name === restoredMenu)) return restoredMenu;
   if (menus.some((menu) => menu.Menu_Name === "Overview")) return "Overview";
   const firstLeaf = menus.find((menu) => menu.parent_id != null);
   return firstLeaf?.Menu_Name || menus[0]?.Menu_Name || "";

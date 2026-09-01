@@ -21,6 +21,26 @@ export function hasScheduleAdminAccess(user = {}) {
   return Boolean(user.is_superuser);
 }
 
+export function getTodayDateString(date = new Date()) {
+  const currentDate = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(currentDate.getTime())) return "";
+
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const day = String(currentDate.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function getDefaultScheduleDateRange(now = new Date()) {
+  const today = getTodayDateString(now);
+  return {
+    fromDate: today,
+    toDate: today,
+    isTodayOnly: true,
+  };
+}
+
 export function getScheduleDateState(value, now = new Date()) {
   if (!value) return "unscheduled";
   const scheduled = startOfDay(value);

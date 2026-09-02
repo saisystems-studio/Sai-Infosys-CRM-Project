@@ -1,12 +1,19 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from Customers.models import CustomerDetails
-from Inquiry.models import InquiryDetails_tbl, InquiryTaskProgress, TaskStatus
-from masters.models import MenuMaster
+from Inquiry.models import (
+    InquiryDetails_tbl,
+    InquiryProductDetails_tbl,
+    InquiryTaskProgress,
+    PaymentDetail,
+    TaskStatus,
+)
+from masters.models import MenuMaster, ProductTypeMaster
 from staff.models import StaffDetails, StaffMenuPermission
 
 
@@ -160,6 +167,50 @@ class InquiryTaskDetailApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["task_progress"], [])
         self.assertIsNone(response.data["active_session"])
+
+    def test_task_detail_includes_payment_summary_and_transactions(self):
+        product_type = ProductTypeMaster.objects.create(
+            product_type_name="CRM Service",
+            created_by=self.assigned_user,
+        )
+        product = InquiryProductDetails_tbl.objects.create(
+            Inquiry_Id=self.inquiry,
+            ProductType_Id=product_type,
+            Quantity=1,
+            Rate=Decimal("150.00"),
+            Amount=Decimal("150.00"),
+            Revenue_Amount=Decimal("150.00"),
+            Created_By=self.assigned_user,
+        )
+        payment = PaymentDetail.objects.create(
+            Inquiry_Product=product,
+            Amount=Decimal("50.00"),
+            Payment_Type=PaymentDetail.PaymentType.INSTALLMENT,
+            Approval_Status=PaymentDetail.PaymentApprovalStatus.RECEIVED,
+            Created_By=self.assigned_user,
+        )
+        self.client.force_authenticate(self.assigned_user)
+
+        response = self.client.get(self.task_detail_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["payment_summary"]["total_amount"],
+            Decimal("150.00"),
+        )
+        self.assertEqual(
+            response.data["payment_summary"]["total_paid"],
+            Decimal("50.00"),
+        )
+        self.assertEqual(
+            response.data["payment_summary"]["remaining_amount"],
+            Decimal("100.00"),
+        )
+        self.assertEqual(response.data["payment_summary"]["status"], "Not Paid")
+        self.assertEqual(
+            response.data["payment_summary"]["payments"][0]["id"],
+            payment.Id,
+        )
 
     def test_schedule_returns_completed_duration_and_active_start_time(self):
         self.client.force_authenticate(self.assigned_user)

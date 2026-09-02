@@ -103,3 +103,13 @@ class CompletedInquiryReportApiTests(APITestCase):
         response = self.client.get("/api/inquiries/completed-inquiry-report/")
 
         self.assertEqual(response.status_code, 403)
+
+    def test_staff_role_remains_scoped_even_for_a_django_superuser(self):
+        self.staff_user.is_superuser = True
+        self.staff_user.save(update_fields=["is_superuser"])
+        self.client.force_authenticate(self.staff_user)
+
+        response = self.client.get("/api/inquiries/completed-inquiry-report/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.data], [self.own_completed.pk])

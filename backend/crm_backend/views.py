@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Exists, OuterRef, Q, Sum
+from django.db.models import Exists, OuterRef, Prefetch, Q, Sum
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,6 +12,7 @@ from staff.access import get_staff, has_full_access
 from Customers.models import CustomerDetails
 from Inquiry.models import InquiryDetails_tbl, InquiryProductDetails_tbl
 from Inquiry.models import InquiryTaskProgress
+from Inquiry.serializers import InquiryListSerializer
 
 
 @api_view(["POST"])
@@ -85,7 +88,8 @@ def current_user(request):
 @permission_classes([IsAuthenticated])
 def dashboard_stats(request):
     staff = get_staff(request.user)
-    if has_full_access(request.user, staff):
+    full_access = has_full_access(request.user, staff)
+    if full_access:
         inquiries = InquiryDetails_tbl.objects.all()
         customers = CustomerDetails.objects.all()
     elif staff is not None:
@@ -106,6 +110,19 @@ def dashboard_stats(request):
         End_Time__isnull=True,
     )
     started_tasks = InquiryTaskProgress.objects.filter(Inquiry_Id=OuterRef("pk"))
+    inquiries_with_started_task = inquiries.annotate(
+        has_started_task=Exists(started_tasks),
+    )
+    requested_date = parse_date(request.query_params.get("date", ""))
+    today = requested_date or timezone.localdate()
+    if full_access:
+        dashboard_inquiries = inquiries_with_started_task.filter(
+            Shedule_Date=today,
+        )
+    else:
+        dashboard_inquiries = inquiries_with_started_task.filter(
+            Q(Shedule_Date=today) | Q(has_started_task=False),
+        )
     total_revenue = InquiryProductDetails_tbl.objects.filter(
         Inquiry_Id__in=inquiries,
         Payment_Status="Received",
@@ -117,6 +134,22 @@ def dashboard_stats(request):
         Inquiry_Id__in=completed_inquiries,
         Payment_Status="Received",
     ).aggregate(total=Sum("Revenue_Amount"))["total"] or 0
+
+    dashboard_rows = InquiryListSerializer(
+        dashboard_inquiries.order_by("Shedule_Date", "-Created_On").prefetch_related(
+            Prefetch(
+                "inquiryproductdetails_tbl_set",
+                queryset=InquiryProductDetails_tbl.objects.select_related("ProductType_Id"),
+            ),
+        ),
+        many=True,
+        context={"request": request},
+    ).data
+    not_started_ids = set(
+        dashboard_inquiries.filter(has_started_task=False).values_list("pk", flat=True)
+    )
+    for row in dashboard_rows:
+        row["is_not_started"] = row["id"] in not_started_ids
 
     return Response({
         "totalCustomers": customers.count(),
@@ -130,4 +163,5 @@ def dashboard_stats(request):
         ).filter(has_active_task=True).count(),
         "completedSchedules": completed_inquiries.count(),
         "completedRevenue": completed_revenue,
+        "dashboardInquiries": dashboard_rows,
     })

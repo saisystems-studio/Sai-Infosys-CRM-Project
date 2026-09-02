@@ -211,10 +211,41 @@ function Dashboard() {
     inProgressSchedules: 0,
     completedSchedules: 0,
     completedRevenue: 0,
+    dashboardInquiries: [],
   });
   const [loading, setLoading] = useState(true);
   const dashboardRole = normalizeRole(user?.role || user?.user_type);
   const isSuperAdmin = dashboardRole === "super admin";
+
+  // List of all page/menu names where FAB should NOT appear
+  const nonDashboardPages = [
+    "Customer List",
+    "Staff List",
+    "Add Staff",
+    "Add Customer",
+    "Inquiry List",
+    "Add Inquiry",
+    "Product Type Master",
+    "Customer Type Master",
+    "Status Type Master",
+    "Source Type Master",
+    "Rating Type Master",
+    "License Type Master",
+    "Schedule",
+    "Schedule Detail",
+    "Completed Inquery Report",
+    "Completed Inquiry Detail",
+    "Payment Approval",
+    "Payment Pending",
+    "Payment Received Details",
+    "Payement Details Report",
+  ];
+
+  // Check if we're on the dashboard (home page)
+  const isDashboardPage =
+    active === "" ||
+    active === "Dashboard" ||
+    (active && !nonDashboardPages.includes(active));
 
   useEffect(() => {
     saveActiveMenu(active, sessionStorage);
@@ -337,22 +368,24 @@ function Dashboard() {
         );
         const isSuperAdmin = loggedInRole === "super admin";
         const isAdmin = loggedInRole === "admin";
-        const canViewPaymentApprovalMenu =
-          canViewPaymentApproval(loggedInUser);
+        const canViewPaymentApprovalMenu = canViewPaymentApproval(loggedInUser);
         const canViewPaymentPendingMenu = canViewPaymentPending(loggedInUser);
         const canViewPaymentReceivedMenu = isSuperAdmin || isAdmin;
         const activeMenus = allMenus
           .filter((menu) => menu.Is_Active === true)
           .filter(
             (menu) =>
-              !["Payment Approval", "Payment Pending", "Payment Received Details", "Payement Details Report"].includes(
-                menu.Menu_Name,
-              ) ||
+              ![
+                "Payment Approval",
+                "Payment Pending",
+                "Payment Received Details",
+                "Payement Details Report",
+              ].includes(menu.Menu_Name) ||
               (menu.Menu_Name === "Payment Approval"
                 ? canViewPaymentApprovalMenu
                 : menu.Menu_Name === "Payment Pending"
                   ? canViewPaymentPendingMenu
-                : canViewPaymentReceivedMenu),
+                  : canViewPaymentReceivedMenu),
           );
 
         console.log(`📋 Total active menus: ${activeMenus.length}`);
@@ -500,9 +533,16 @@ function Dashboard() {
           Authorization: `Bearer ${token}`,
         };
 
-        // Fetch stats
+        const today = new Date();
+        const localDate = [
+          today.getFullYear(),
+          String(today.getMonth() + 1).padStart(2, "0"),
+          String(today.getDate()).padStart(2, "0"),
+        ].join("-");
+
+        // Fetch stats for the browser's local date.
         const statsResponse = await fetch(
-          "http://127.0.0.1:8000/api/dashboard-stats/",
+          `http://127.0.0.1:8000/api/dashboard-stats/?date=${localDate}`,
           { headers },
         );
         if (statsResponse.ok) {
@@ -517,6 +557,19 @@ function Dashboard() {
     };
 
     fetchDashboardData();
+
+    const refreshDashboard = () => {
+      if (document.visibilityState === "visible") {
+        fetchDashboardData();
+      }
+    };
+    window.addEventListener("focus", refreshDashboard);
+    document.addEventListener("visibilitychange", refreshDashboard);
+
+    return () => {
+      window.removeEventListener("focus", refreshDashboard);
+      document.removeEventListener("visibilitychange", refreshDashboard);
+    };
   }, []);
 
   /* =======================================================
@@ -524,15 +577,25 @@ function Dashboard() {
   ======================================================= */
 
   const displayMenus = (() => {
-    const paymentReceivedMenu = menus.find(
-      (menu) => ["Payment Received Details", "Payement Details Report"].includes(menu.Menu_Name),
+    const paymentReceivedMenu = menus.find((menu) =>
+      ["Payment Received Details", "Payement Details Report"].includes(
+        menu.Menu_Name,
+      ),
     );
-    if (!paymentReceivedMenu || menus.some((menu) => menu.Menu_Name === "Reports")) {
+    if (
+      !paymentReceivedMenu ||
+      menus.some((menu) => menu.Menu_Name === "Reports")
+    ) {
       return menus;
     }
 
     return [
-      ...menus.filter((menu) => !["Payment Received Details", "Payement Details Report"].includes(menu.Menu_Name)),
+      ...menus.filter(
+        (menu) =>
+          !["Payment Received Details", "Payement Details Report"].includes(
+            menu.Menu_Name,
+          ),
+      ),
       {
         Id: "reports-root",
         Menu_Name: "Reports",
@@ -888,7 +951,9 @@ function Dashboard() {
               autoStartTask={autoStartScheduleTask}
             />
           ) : active === "Completed Inquery Report" ? (
-            <CompletedInquiryReport onViewDetails={handleViewCompletedInquiry} />
+            <CompletedInquiryReport
+              onViewDetails={handleViewCompletedInquiry}
+            />
           ) : active === "Completed Inquiry Detail" ? (
             <ScheduleDetail
               inquiryId={selectedScheduleInquiryId}
@@ -901,9 +966,12 @@ function Dashboard() {
             <PaymentApproval />
           ) : active === "Payment Pending" ? (
             <PaymentPending />
-          ) : ["Payment Received Details", "Payement Details Report"].includes(active) ? (
+          ) : ["Payment Received Details", "Payement Details Report"].includes(
+              active,
+            ) ? (
             <PaymentReceivedDetails />
           ) : (
+            // DASHBOARD CONTENT - This is the home page
             <>
               <section className="page-heading">
                 <div>
@@ -914,13 +982,6 @@ function Dashboard() {
                     Here's what's happening with your business today.
                   </small>
                 </div>
-                <button
-                  className="primary-button"
-                  onClick={() => setActive("Add Customer")}
-                >
-                  <Icon name="plus" />
-                  Add new lead
-                </button>
               </section>
 
               <div className="stats-grid">
@@ -1022,10 +1083,106 @@ function Dashboard() {
                   </small>
                 </div>
               </div>
+
+              <section className="dashboard-inquiries-panel">
+                <div className="dashboard-inquiries-header">
+                  <div>
+                    <h2>
+                      {isAdmin
+                        ? "Today's inquiries"
+                        : "Today's inquiries & not started"}
+                    </h2>
+                    <p>
+                      {isAdmin
+                        ? "All staff schedules for today"
+                        : "Your assigned schedules, including overdue work"}
+                    </p>
+                  </div>
+                  <span>{stats.dashboardInquiries?.length || 0} inquiries</span>
+                </div>
+                {stats.dashboardInquiries?.length ? (
+                  <div className="dashboard-inquiries-list">
+                    {stats.dashboardInquiries.map((inquiry) => (
+                      <button
+                        type="button"
+                        className={`dashboard-inquiry-row ${
+                          inquiry.is_not_started
+                            ? "dashboard-inquiry-row-not-started"
+                            : ""
+                        }`}
+                        key={inquiry.id}
+                        onClick={() => handleViewScheduleDetail(inquiry.id)}
+                      >
+                        <span className="dashboard-inquiry-date">
+                          {inquiry.schedule_date || "No date"}
+                        </span>
+                        <div className="dashboard-inquiry-main">
+                          <strong>{inquiry.customer_name || "Unknown customer"}</strong>
+                          <small>
+                            {isAdmin
+                              ? `Assigned to ${inquiry.resource_name || "Unassigned"}`
+                              : inquiry.resource_name || "Unassigned"}
+                          </small>
+                          {inquiry.products?.length ? (
+                            <div className="dashboard-inquiry-products">
+                              {inquiry.products.map((product) => (
+                                <div
+                                  className="dashboard-inquiry-product"
+                                  key={product.id || `${product.product_name}-${product.requirement}`}
+                                >
+                                  <span className="dashboard-inquiry-product-name">
+                                    {product.product_name || product.product_type_name || "Product"}
+                                  </span>
+                                  <span>
+                                    Qty {product.qty ?? product.quantity ?? 0}
+                                  </span>
+                                  {product.amount !== null && product.amount !== undefined && (
+                                    <span>
+                                      ₹{Number(product.amount).toLocaleString("en-IN")}
+                                    </span>
+                                  )}
+                                  {product.requirement && (
+                                    <span className="dashboard-inquiry-requirement">
+                                      {product.requirement}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <small className="dashboard-inquiry-no-products">
+                              No product details
+                            </small>
+                          )}
+                        </div>
+                        <span className="dashboard-inquiry-status">
+                          {inquiry.is_not_started ? "Not started" : inquiry.status_name || "In progress"}
+                        </span>
+                        <span className="dashboard-inquiry-arrow">›</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="dashboard-inquiries-empty">
+                    No inquiries are scheduled for this view.
+                  </div>
+                )}
+              </section>
             </>
           )}
         </div>
       </main>
+
+      {/* Floating Action Button - Only show on Dashboard (home page) */}
+      {isDashboardPage && (
+        <button
+          className="fab-button"
+          onClick={handleAddInquiry}
+          aria-label="Add new inquiry"
+        >
+          <Icon name="plus" size={24} />
+        </button>
+      )}
     </div>
   );
 }

@@ -1006,6 +1006,64 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
             </span>
           </div>
         </div>
+
+        <div className="detail-card detail-card-half detail-payment-card">
+          <div className="detail-card-header">
+            <div>
+              <h3>Payment Details</h3>
+              <p className="detail-card-subtitle">
+                Collection summary for this inquiry
+              </p>
+            </div>
+            <span className={`payment-status-badge payment-status-${String(
+              inquiry.payment_summary?.status || "Not Paid",
+            )
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`}>
+              {inquiry.payment_summary?.status || "Not Paid"}
+            </span>
+          </div>
+
+          <div className="payment-summary-grid">
+            <div className="payment-summary-item">
+              <span className="detail-label">Total payable</span>
+              <strong className="detail-amount">
+                {formatAmount(inquiry.payment_summary?.total_amount)}
+              </strong>
+            </div>
+            <div className="payment-summary-item">
+              <span className="detail-label">Amount paid</span>
+              <strong>
+                {formatAmount(inquiry.payment_summary?.total_paid)}
+              </strong>
+            </div>
+            <div className="payment-summary-item">
+              <span className="detail-label">Balance due</span>
+              <strong className="payment-balance">
+                {formatAmount(inquiry.payment_summary?.remaining_amount)}
+              </strong>
+            </div>
+          </div>
+          {inquiry.payment_summary?.payments?.length > 0 && (
+            <div className="payment-history">
+              <div className="payment-history-heading">
+                <span>Payment history</span>
+                <span>{inquiry.payment_summary.payments.length} transaction(s)</span>
+              </div>
+              {inquiry.payment_summary.payments.map((payment) => (
+                <div className="payment-history-row" key={payment.id}>
+                  <span>
+                    {payment.payment_type === "full"
+                      ? "Full Payment"
+                      : "Installment"}
+                  </span>
+                  <strong>{formatAmount(payment.amount)}</strong>
+                  <span>{payment.approval_status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ======================================================

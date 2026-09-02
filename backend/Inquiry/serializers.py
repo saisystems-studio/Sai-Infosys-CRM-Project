@@ -539,6 +539,7 @@ class InquiryTaskDetailSerializer(InquiryListSerializer):
     active_session = serializers.SerializerMethodField()
     can_update_task = serializers.SerializerMethodField()
     invoice_amount = serializers.SerializerMethodField()
+    payment_summary = serializers.SerializerMethodField()
 
     class Meta(InquiryListSerializer.Meta):
         fields = InquiryListSerializer.Meta.fields + [
@@ -546,6 +547,7 @@ class InquiryTaskDetailSerializer(InquiryListSerializer):
             "active_session",
             "can_update_task",
             "invoice_amount",
+            "payment_summary",
         ]
 
     def get_task_progress(self, obj):
@@ -570,6 +572,58 @@ class InquiryTaskDetailSerializer(InquiryListSerializer):
     def get_invoice_amount(self, obj):
         product = self.get_product_records(obj).first()
         return product.Invoice_Amount if product else None
+
+    def get_payment_summary(self, obj):
+        products = list(self.get_product_records(obj))
+        total_payable = sum(
+            (
+                product.Revenue_Amount
+                if product.Revenue_Amount is not None
+                else product.Amount
+            )
+            or Decimal("0.00")
+            for product in products
+        )
+        payments = [
+            payment
+            for product in products
+            for payment in product.payment_details.all()
+        ]
+        total_paid = sum(
+            (payment.Amount or Decimal("0.00")) for payment in payments
+        )
+        remaining = max(total_payable - total_paid, Decimal("0.00"))
+        statuses = {product.Payment_Status for product in products}
+
+        if statuses and statuses == {"Not Required"}:
+            status = "Not Required"
+        elif products and all(
+            product.Payment_Status == "Received" for product in products
+        ):
+            status = "Paid"
+        else:
+            status = "Not Paid"
+
+        return {
+            "total_amount": total_payable,
+            "total_paid": total_paid,
+            "remaining_amount": remaining,
+            "status": status,
+            "payments": [
+                {
+                    "id": payment.Id,
+                    "amount": payment.Amount,
+                    "payment_type": payment.Payment_Type,
+                    "payment_date": payment.Payment_Date,
+                    "approval_status": payment.Approval_Status,
+                }
+                for payment in sorted(
+                    payments,
+                    key=lambda payment: (payment.Payment_Date, payment.Id),
+                    reverse=True,
+                )
+            ],
+        }
 
 
 class CompletedInquiryReportSerializer(InquiryListSerializer):

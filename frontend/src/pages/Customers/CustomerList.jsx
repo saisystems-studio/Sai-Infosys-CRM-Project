@@ -25,7 +25,7 @@ const TransferIcon = ({ type }) => {
   );
 };
 
-function CustomerList({ permissions = {} }) {
+function CustomerList({ permissions = {}, onAddCustomer }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -322,7 +322,15 @@ function CustomerList({ permissions = {} }) {
             onChange={handleImport}
           />
 
-          {permissions.add && <button className="add-btn">Add Customer</button>}
+          {permissions.add && (
+            <button
+              type="button"
+              className="add-btn"
+              onClick={onAddCustomer}
+            >
+              Add Customer
+            </button>
+          )}
         </div>
       </div>
 

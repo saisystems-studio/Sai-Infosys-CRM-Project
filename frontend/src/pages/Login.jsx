@@ -44,6 +44,37 @@ const Icon = ({ name, size = 18 }) => {
         <path d="m19 15 .7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z" />
       </>
     ),
+    building: (
+      <>
+        <rect x="4" y="8" width="16" height="14" rx="2" />
+        <path d="M8 22V14h8v8" />
+        <path d="M12 14v8" />
+      </>
+    ),
+    users: (
+      <>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M5.3 18.5a8 8 0 0 1 13.4 0" />
+      </>
+    ),
+    chart: (
+      <>
+        <path d="M21 12v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3" />
+        <path d="m15 6 6-3-3 6" />
+        <circle cx="15" cy="15" r="1.5" />
+      </>
+    ),
+    check: (
+      <>
+        <path d="m9 12 2 2 4-4" />
+        <circle cx="12" cy="12" r="10" />
+      </>
+    ),
+    star: (
+      <>
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </>
+    ),
   };
   return (
     <svg
@@ -104,14 +135,28 @@ function Login({ onLogin }) {
       setIsLoading(false);
     }
   };
+
   return (
     <main className="login-shell">
+      {/* Left Panel - Brand Side */}
       <section
         className="brand-panel"
         aria-label="Sai Infosys CRM introduction"
       >
         <div className="orb orb-one" />
         <div className="orb orb-two" />
+        <div className="orb orb-three" />
+
+        {/* Animated background particles */}
+        <div className="particles">
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+        </div>
+
         <header className="brand-lockup">
           <div className="logo-mark">SI</div>
           <div>
@@ -133,46 +178,55 @@ function Login({ onLogin }) {
           </p>
         </div>
 
-        <div className="insight-card">
-          <div className="insight-head">
-            <span>Revenue overview</span>
-            <span className="live-dot">Live</span>
-          </div>
-          <div className="insight-value">
-            ₹24.8L <span>+18.4%</span>
-          </div>
-          <svg
-            className="chart"
-            viewBox="0 0 420 86"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#9b8cff" stopOpacity=".35" />
-                <stop offset="1" stopColor="#9b8cff" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path
-              className="chart-area"
-              d="M0 76 C35 67 46 70 74 54 S118 62 150 44 194 54 228 34 272 46 306 25 354 35 420 8 V86 H0Z"
-            />
-            <path
-              className="chart-line"
-              d="M0 76 C35 67 46 70 74 54 S118 62 150 44 194 54 228 34 272 46 306 25 354 35 420 8"
-            />
-          </svg>
-          <div className="team-row">
-            <div className="avatars">
-              <span>AK</span>
-              <span>RM</span>
-              <span>PS</span>
+        {/* Feature Grid - Replacing Dashboard Preview */}
+        <div className="feature-grid">
+          <div className="feature-card">
+            <div
+              className="feature-icon"
+              style={{ background: "rgba(108, 92, 231, 0.15)" }}
+            >
+              <Icon name="users" size={18} />
             </div>
-            <p>
-              <strong>3 team members</strong>
-              <br />
-              closed deals today
-            </p>
+            <div className="feature-content">
+              <h4>Team Collaboration</h4>
+              <p>Real-time sync across your entire sales team</p>
+            </div>
+          </div>
+          <div className="feature-card">
+            <div
+              className="feature-icon"
+              style={{ background: "rgba(80, 210, 162, 0.15)" }}
+            >
+              <Icon name="chart" size={18} />
+            </div>
+            <div className="feature-content">
+              <h4>Analytics Dashboard</h4>
+              <p>Track performance with intelligent insights</p>
+            </div>
+          </div>
+          <div className="feature-card">
+            <div
+              className="feature-icon"
+              style={{ background: "rgba(255, 180, 50, 0.15)" }}
+            >
+              <Icon name="star" size={18} />
+            </div>
+            <div className="feature-content">
+              <h4>Smart Automation</h4>
+              <p>AI-powered workflows to boost productivity</p>
+            </div>
+          </div>
+          <div className="feature-card">
+            <div
+              className="feature-icon"
+              style={{ background: "rgba(255, 107, 107, 0.15)" }}
+            >
+              <Icon name="shield" size={18} />
+            </div>
+            <div className="feature-content">
+              <h4>Enterprise Security</h4>
+              <p>Bank-grade encryption & compliance ready</p>
+            </div>
           </div>
         </div>
 
@@ -184,21 +238,24 @@ function Login({ onLogin }) {
         </div>
       </section>
 
+      {/* Right Panel - Login Form */}
       <section className="form-panel">
         <div className="login-card">
           <div className="mobile-brand">
             <div className="logo-mark">SI</div>
             <strong>Sai Infosys</strong>
           </div>
+
           <div className="welcome">
             <span className="welcome-kicker">Welcome back</span>
             <h2>Sign in to your account</h2>
-            <p>Enter your details to access your CRM workspace.</p>
+            <p>Enter your credentials to access your CRM workspace.</p>
           </div>
 
           <form onSubmit={handleSubmit}>
             {error && (
               <div className="login-error" role="alert">
+                <Icon name="shield" size={14} />
                 {error}
               </div>
             )}
@@ -245,11 +302,15 @@ function Login({ onLogin }) {
                 </button>
               </div>
             </div>
-            <label className="remember">
-              <input type="checkbox" />
-              <span className="checkmark" />
-              Keep me signed in
-            </label>
+
+            <div className="form-options">
+              <label className="remember">
+                <input type="checkbox" />
+                <span className="checkmark" />
+                Keep me signed in
+              </label>
+            </div>
+
             <button className="btn-signin" type="submit" disabled={isLoading}>
               <span>
                 {isLoading ? "Signing in..." : "Sign in to workspace"}
@@ -265,9 +326,44 @@ function Login({ onLogin }) {
           <div className="divider">
             <span>or continue with</span>
           </div>
-          <button className="btn-sso" type="button">
-            <span className="sso-mark">S</span>Company SSO
-          </button>
+
+          <div className="social-buttons">
+            <button className="btn-social google">
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+              </svg>
+              Google
+            </button>
+            <button className="btn-social microsoft">
+              <svg width="20" height="20" viewBox="0 0 23 23">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                <rect x="12" y="1" width="9" height="9" fill="#7FBA00" />
+                <rect x="1" y="12" width="9" height="9" fill="#00A4EF" />
+                <rect x="12" y="12" width="9" height="9" fill="#FFB900" />
+              </svg>
+              Microsoft
+            </button>
+            <button className="btn-social sso">
+              <span className="sso-mark">S</span>
+              Company SSO
+            </button>
+          </div>
+
           <p className="signup-helper">
             New to Sai Infosys?{" "}
             <a href="#contact">Contact your administrator</a>

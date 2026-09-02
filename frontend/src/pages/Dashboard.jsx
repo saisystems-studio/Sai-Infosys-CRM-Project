@@ -41,6 +41,24 @@ import {
 const normalizeRole = (role = "") =>
   String(role).trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
 
+const normalizeMenuName = (name = "") =>
+  String(name).trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+
+const isPaymentReceivedReportMenu = (menuName) => {
+  const normalized = normalizeMenuName(menuName);
+
+  return (
+    [
+      "payment received report",
+      "payment received details",
+      "payment received details report",
+      "payement details report",
+      "payment details report",
+    ].includes(normalized) ||
+    (normalized.includes("payment received") && normalized.includes("report"))
+  );
+};
+
 /* =========================================================
    ICON COMPONENT
 ========================================================= */
@@ -238,6 +256,7 @@ function Dashboard() {
     "Payment Approval",
     "Payment Pending",
     "Payment Received Details",
+    "Payment Received Report",
     "Payement Details Report",
   ];
 
@@ -373,20 +392,21 @@ function Dashboard() {
         const canViewPaymentReceivedMenu = isSuperAdmin || isAdmin;
         const activeMenus = allMenus
           .filter((menu) => menu.Is_Active === true)
-          .filter(
-            (menu) =>
-              ![
-                "Payment Approval",
-                "Payment Pending",
-                "Payment Received Details",
-                "Payement Details Report",
-              ].includes(menu.Menu_Name) ||
-              (menu.Menu_Name === "Payment Approval"
-                ? canViewPaymentApprovalMenu
-                : menu.Menu_Name === "Payment Pending"
-                  ? canViewPaymentPendingMenu
-                  : canViewPaymentReceivedMenu),
-          );
+          .filter((menu) => {
+            const isPaymentApproval = menu.Menu_Name === "Payment Approval";
+            const isPaymentPending = menu.Menu_Name === "Payment Pending";
+            const isPaymentReceivedReport = isPaymentReceivedReportMenu(
+              menu.Menu_Name,
+            );
+
+            if (!isPaymentApproval && !isPaymentPending && !isPaymentReceivedReport) {
+              return true;
+            }
+
+            if (isPaymentApproval) return canViewPaymentApprovalMenu;
+            if (isPaymentPending) return canViewPaymentPendingMenu;
+            return canViewPaymentReceivedMenu;
+          });
 
         console.log(`📋 Total active menus: ${activeMenus.length}`);
         console.log(
@@ -578,9 +598,7 @@ function Dashboard() {
 
   const displayMenus = (() => {
     const paymentReceivedMenu = menus.find((menu) =>
-      ["Payment Received Details", "Payement Details Report"].includes(
-        menu.Menu_Name,
-      ),
+      isPaymentReceivedReportMenu(menu.Menu_Name),
     );
     if (
       !paymentReceivedMenu ||
@@ -591,10 +609,7 @@ function Dashboard() {
 
     return [
       ...menus.filter(
-        (menu) =>
-          !["Payment Received Details", "Payement Details Report"].includes(
-            menu.Menu_Name,
-          ),
+        (menu) => !isPaymentReceivedReportMenu(menu.Menu_Name),
       ),
       {
         Id: "reports-root",
@@ -665,6 +680,10 @@ function Dashboard() {
   const handleAddInquiry = () => {
     setSelectedInquiry(null);
     setActive("Add Inquiry");
+  };
+
+  const handleAddCustomer = () => {
+    setActive("Add Customer");
   };
 
   const handleAddStaff = () => {
@@ -883,7 +902,10 @@ function Dashboard() {
               </div>
             </section>
           ) : active === "Customer List" ? (
-            <CustomerList permissions={menuAccess["Customer List"]} />
+            <CustomerList
+              permissions={menuAccess["Customer List"]}
+              onAddCustomer={handleAddCustomer}
+            />
           ) : active === "Staff List" ? (
             <StaffList
               onAddStaff={handleAddStaff}
@@ -966,9 +988,7 @@ function Dashboard() {
             <PaymentApproval />
           ) : active === "Payment Pending" ? (
             <PaymentPending />
-          ) : ["Payment Received Details", "Payement Details Report"].includes(
-              active,
-            ) ? (
+          ) : isPaymentReceivedReportMenu(active) ? (
             <PaymentReceivedDetails />
           ) : (
             // DASHBOARD CONTENT - This is the home page
@@ -1168,6 +1188,7 @@ function Dashboard() {
                   </div>
                 )}
               </section>
+
             </>
           )}
         </div>

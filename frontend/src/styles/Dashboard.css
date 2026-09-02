@@ -447,6 +447,167 @@
     margin-bottom: 15px
 }
 
+.dashboard-inquiries-panel {
+    margin-top: 18px;
+    border: 1px solid #e8eaf1;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 3px 14px rgba(25, 32, 60, .025);
+    overflow: hidden;
+}
+
+.dashboard-inquiries-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #edf0f5;
+}
+
+.dashboard-inquiries-header h2 {
+    margin: 0;
+    color: #252d40;
+    font: 700 14px Manrope;
+}
+
+.dashboard-inquiries-header p {
+    margin: 4px 0 0;
+    color: #959cac;
+    font-size: 10px;
+}
+
+.dashboard-inquiries-header>span {
+    border-radius: 999px;
+    background: #f0efff;
+    padding: 6px 10px;
+    color: #6555db;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.dashboard-inquiries-list {
+    display: grid;
+}
+
+.dashboard-inquiry-row {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr) auto 18px;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid #f0f1f5;
+    background: #fff;
+    padding: 12px 18px;
+    color: #60697b;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.dashboard-inquiry-row:last-child {
+    border-bottom: 0;
+}
+
+.dashboard-inquiry-row:hover {
+    background: #fafaff;
+}
+
+.dashboard-inquiry-row-not-started {
+    border-left: 3px solid #f59e0b;
+    background: #fffbeb;
+}
+
+.dashboard-inquiry-date {
+    color: #7c8496;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.dashboard-inquiry-main {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.dashboard-inquiry-main strong {
+    overflow: hidden;
+    color: #252d40;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-inquiry-main small {
+    overflow: hidden;
+    color: #959cac;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-inquiry-products {
+    display: grid;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.dashboard-inquiry-product {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px 9px;
+    color: #7c8496;
+    font-size: 9px;
+}
+
+.dashboard-inquiry-product-name {
+    color: #4f46a5;
+    font-weight: 700;
+}
+
+.dashboard-inquiry-requirement {
+    max-width: 360px;
+    overflow: hidden;
+    color: #687287;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-inquiry-no-products {
+    font-style: italic;
+}
+
+.dashboard-inquiry-status {
+    border-radius: 999px;
+    background: #edf8f3;
+    padding: 5px 9px;
+    color: #23815f;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.dashboard-inquiry-row-not-started .dashboard-inquiry-status {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.dashboard-inquiry-arrow {
+    color: #6555db;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.dashboard-inquiries-empty {
+    padding: 26px 18px;
+    color: #959cac;
+    font-size: 11px;
+    text-align: center;
+}
+
 .stat-card,
 .panel {
     border: 1px solid #e8eaf1;
@@ -1313,6 +1474,30 @@
 }
 
 @media (max-width: 760px) {
+    .dashboard-inquiry-row {
+        grid-template-columns: 1fr auto 18px;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .dashboard-inquiry-date {
+        grid-column: 1 / -1;
+    }
+
+    .dashboard-inquiry-main {
+        grid-column: 1 / 2;
+    }
+
+    .dashboard-inquiry-status {
+        grid-column: 2 / 3;
+        grid-row: 2;
+    }
+
+    .dashboard-inquiry-arrow {
+        grid-column: 3 / 4;
+        grid-row: 2;
+    }
+
     .activity-item {
         padding: 8px 10px;
     }
@@ -1349,5 +1534,94 @@
 @media (max-width: 480px) {
     .actions-grid {
         grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* =========================================================
+   FLOATING ACTION BUTTON (FAB) - Simplified
+========================================================= */
+
+/* FAB Button - Fixed position bottom right */
+.fab-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+}
+
+.fab-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 30px rgba(99, 102, 241, 0.6);
+}
+
+.fab-button:active {
+    transform: scale(0.95);
+}
+
+/* Ripple/Pulse Animation */
+.fab-button::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    animation: fabRipple 2s infinite;
+}
+
+@keyframes fabRipple {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* =========================================================
+   RESPONSIVE STYLES
+========================================================= */
+
+/* Tablet */
+@media (max-width: 768px) {
+    .fab-button {
+        bottom: 20px;
+        right: 20px;
+        width: 48px;
+        height: 48px;
+    }
+
+    .fab-button svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .fab-button {
+        bottom: 16px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .fab-button svg {
+        width: 18px;
+        height: 18px;
     }
 }

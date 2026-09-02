@@ -78,7 +78,10 @@ class InquiryViewSet(
                     else queryset.none()
                 )
         if self.action in ("task_detail", "schedule", "completed_inquiry_report"):
-            return queryset.prefetch_related("task_progress__Resource_Id")
+            return queryset.prefetch_related(
+                "task_progress__Resource_Id",
+                "inquiryproductdetails_tbl_set__payment_details",
+            )
         return queryset
 
     def get_serializer_class(self):
@@ -402,11 +405,10 @@ class InquiryViewSet(
     )
     def completed_inquiry_report(self, request):
         staff = get_staff(request.user)
-        role = normalize_role(getattr(staff, "Role", ""))
         inquiries = self.get_queryset().filter(
             Status_Id__status_type_name__iexact="Completed"
         )
-        if not request.user.is_superuser and role != "super admin":
+        if not has_full_access(request.user, staff):
             if staff is None:
                 return Response(
                     {"detail": "Staff details not found for logged-in user."},

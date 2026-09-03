@@ -346,7 +346,11 @@ export default function AddCustomer({
   const handleCustomerChange = (e) => {
     const { name, value } = e.target;
     const nextValue =
-      name === "pincode" ? value.replace(/\D/g, "").slice(0, 6) : value;
+      name === "pincode"
+        ? value.replace(/\D/g, "").slice(0, 6)
+        : name === "gst_number"
+          ? value.slice(0, 15)
+          : value;
 
     if (name === "pincode") {
       setCustomerData((prev) => ({
@@ -370,12 +374,29 @@ export default function AddCustomer({
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+    if (name === "gst_number" && nextValue && nextValue.length !== 15) {
+      setErrors((prev) => ({
+        ...prev,
+        gst_number: "GST number must be 15 characters",
+      }));
+    }
     setErrorMessage("");
   };
 
   // Contact Handlers
   const handleContactChange = (id, field, value) => {
     setContacts((prev) => updateContactField(prev, id, field, value));
+    if (field === "contact_number") {
+      const contactNumber = value.replace(/\D/g, "").slice(0, 10);
+      const contactIndex = contacts.findIndex((contact) => contact.id === id);
+      setErrors((prev) => ({
+        ...prev,
+        [`contact_number_${contactIndex}`]:
+          contactNumber && contactNumber.length !== 10
+            ? "Contact number must be exactly 10 digits"
+            : "",
+      }));
+    }
     setErrorMessage("");
   };
 
@@ -401,6 +422,16 @@ export default function AddCustomer({
         license.id === id ? { ...license, [field]: value } : license,
       ),
     );
+    if (field === "tally_serial_number") {
+      const licenseIndex = licenses.findIndex((license) => license.id === id);
+      setErrors((prev) => ({
+        ...prev,
+        [`tally_serial_${licenseIndex}`]:
+          value && value.length !== 9
+            ? "License number must be exactly 9 digits"
+            : "",
+      }));
+    }
     setErrorMessage("");
   };
 
@@ -442,8 +473,11 @@ export default function AddCustomer({
 
     if (!customerData.customer_code)
       newErrors.customer_code = "Customer code is required";
-    if (!customerData.customer_name)
-      newErrors.customer_name = "Customer name is required";
+    if (!customerData.company_name)
+      newErrors.company_name = "Company name is required";
+    if (customerData.gst_number && customerData.gst_number.length !== 15) {
+      newErrors.gst_number = "GST number must be 15 characters";
+    }
     if (customerData.email_id && !/\S+@\S+\.\S+/.test(customerData.email_id)) {
       newErrors.email_id = "Invalid email format";
     }
@@ -461,6 +495,9 @@ export default function AddCustomer({
     licenses.forEach((license, index) => {
       if (!license.tally_serial_number) {
         newErrors[`tally_serial_${index}`] = "Tally serial number is required";
+      } else if (license.tally_serial_number.length !== 9) {
+        newErrors[`tally_serial_${index}`] =
+          "License number must be exactly 9 digits";
       }
       if (license.expiry_date && new Date(license.expiry_date) < new Date()) {
         newErrors[`expiry_date_${index}`] = "Expiry date cannot be in the past";
@@ -647,30 +684,30 @@ export default function AddCustomer({
             </div>
 
             <div className="form-group">
-              <label>Customer Name *</label>
+              <label>Customer Name</label>
               <input
                 type="text"
                 name="customer_name"
                 value={customerData.customer_name}
                 onChange={handleCustomerChange}
                 placeholder="Enter customer name"
-                className={`customer-input ${errors.customer_name ? "error" : ""}`}
+                className="customer-input"
               />
-              {errors.customer_name && (
-                <span className="error-text">{errors.customer_name}</span>
-              )}
             </div>
 
             <div className="form-group">
-              <label>Company Name</label>
+              <label>Company Name *</label>
               <input
                 type="text"
                 name="company_name"
                 value={customerData.company_name}
                 onChange={handleCustomerChange}
                 placeholder="Enter company name"
-                className="customer-input"
+                className={`customer-input ${errors.company_name ? "error" : ""}`}
               />
+              {errors.company_name && (
+                <span className="error-text">{errors.company_name}</span>
+              )}
             </div>
 
             <div className="form-group">
@@ -790,8 +827,12 @@ export default function AddCustomer({
                 value={customerData.gst_number}
                 onChange={handleCustomerChange}
                 placeholder="Enter GST number"
-                className="customer-input"
+                maxLength={15}
+                className={`customer-input ${errors.gst_number ? "error" : ""}`}
               />
+              {errors.gst_number && (
+                <span className="error-text">{errors.gst_number}</span>
+              )}
             </div>
 
             <div className="form-group full-width">
@@ -875,7 +916,7 @@ export default function AddCustomer({
                           handleContactChange(
                             contact.id,
                             "contact_number",
-                            e.target.value,
+                            e.target.value.replace(/\D/g, "").slice(0, 10),
                           )
                         }
                         placeholder="Enter contact number"

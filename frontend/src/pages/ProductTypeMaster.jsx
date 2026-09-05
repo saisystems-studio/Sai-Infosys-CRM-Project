@@ -15,7 +15,7 @@ export default function ProductTypeMaster({ permissions = {} }) {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/product-types/",
+        "/crm/api/product-types/",
       );
       setProductTypes(response.data);
     } catch (error) {
@@ -40,12 +40,12 @@ export default function ProductTypeMaster({ permissions = {} }) {
       setLoading(true);
 
       if (editId) {
-        await axios.put(`http://127.0.0.1:8000/api/product-types/${editId}/`, {
+        await axios.put(`/crm/api/product-types/${editId}/`, {
           product_type_name: productType,
         });
         alert("Product type updated successfully");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/product-types/", {
+        await axios.post("/crm/api/product-types/", {
           product_type_name: productType,
         });
         alert("Product type saved successfully");
@@ -75,7 +75,7 @@ export default function ProductTypeMaster({ permissions = {} }) {
 
     try {
       setLoading(true);
-      await axios.delete(`http://127.0.0.1:8000/api/product-types/${id}/`);
+      await axios.delete(`/crm/api/product-types/${id}/`);
       alert("Product type deleted successfully");
       await loadProductTypes();
     } catch (error) {

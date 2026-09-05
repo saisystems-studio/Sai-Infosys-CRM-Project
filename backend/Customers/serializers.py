@@ -6,7 +6,9 @@ from .models import (
 )
 from masters.models import CustomerTypeMaster, RatingTypeMaster, LicenseTypeMaster
 from django.contrib.auth.models import User
-from datetime import date
+from django.db import transaction
+
+from .customer_codes import allocate_customer_code
 
 class CustomerContactSerializer(serializers.ModelSerializer):
     contact_name = serializers.CharField(max_length=250, required=True)
@@ -30,12 +32,6 @@ class CustomerLicenseDetailsSerializer(serializers.ModelSerializer):
         model = CustomerLicenseDetails
         exclude = ['customer', 'created_by', 'created_on']
         
-    def validate_expiry_date(self, value):
-        if value and value < date.today():
-            raise serializers.ValidationError("Expiry date cannot be in the past")
-        return value
-
-
 class CustomerDetailsSerializer(serializers.ModelSerializer):
     contacts = CustomerContactSerializer(many=True, required=False)
     licenses = CustomerLicenseDetailsSerializer(many=True, required=False)
@@ -44,8 +40,13 @@ class CustomerDetailsSerializer(serializers.ModelSerializer):
     # Read-only fields that should not be updated via API
     created_by = serializers.PrimaryKeyRelatedField(read_only=True)
     created_on = serializers.DateTimeField(read_only=True)
-    customer_code = serializers.CharField(max_length=50, required=True)
-    customer_name = serializers.CharField(max_length=500, required=True)
+    customer_code = serializers.CharField(read_only=True)
+    customer_name = serializers.CharField(
+        max_length=500,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
     
     class Meta:
         model = CustomerDetails
@@ -58,20 +59,15 @@ class CustomerDetailsSerializer(serializers.ModelSerializer):
         contact = obj.contacts.first()
         return contact.contact_number if contact else ""
 
-    def validate_customer_code(self, value):
-        # Check if customer code already exists (except for updates)
-        instance = self.instance
-        if CustomerDetails.objects.filter(customer_code=value).exclude(pk=instance.pk if instance else None).exists():
-            raise serializers.ValidationError("Customer code already exists")
-        return value
-
     def validate(self, data):
         # Add any cross-field validation here
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
         contacts_data = validated_data.pop('contacts', [])
         licenses_data = validated_data.pop('licenses', [])
+        validated_data['customer_code'] = allocate_customer_code()
         
         # Get current user from context
         request = self.context.get('request')

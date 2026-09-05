@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import Dashboard from "./Pages/Dashboard";
-import Login from "./Pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
 import { startInactivityTimer } from "./sessionActivity";
 import { configureAxiosAuth, refreshAccessToken } from "./authSession";
 
-const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const apiUrl = import.meta.env.VITE_API_URL || "/crm/api";
 const inactivityTimeoutMs = 30 * 60 * 1000;
 
 function clearSession() {
@@ -25,7 +25,7 @@ function App() {
 
   const showLogin = () => {
     clearSession();
-    window.history.replaceState({}, "", "/login");
+    window.history.replaceState({}, "", "/crm/login");
     setStatus("anonymous");
   };
 
@@ -58,7 +58,9 @@ function App() {
         const user = await response.json();
         axios.defaults.headers.common.Authorization = `Bearer ${access}`;
         localStorage.setItem("crm_user", JSON.stringify(user));
-        window.history.replaceState({}, "", "/");
+        if (window.location.pathname === "/crm/login") {
+      window.history.replaceState(window.history.state, "", "/");
+    }
         setStatus("authenticated");
       } catch {
         // Do not allow protected pages to render when the session cannot be checked.
@@ -74,7 +76,9 @@ function App() {
       const user = await response.json();
       axios.defaults.headers.common.Authorization = `Bearer ${access}`;
       localStorage.setItem("crm_user", JSON.stringify(user));
-      window.history.replaceState({}, "", "/");
+      if (window.location.pathname === "/crm/login") {
+      window.history.replaceState(window.history.state, "", "/");
+    }
       setStatus("authenticated");
     };
 
@@ -118,7 +122,9 @@ function App() {
     localStorage.setItem("refresh_token", refresh);
     axios.defaults.headers.common.Authorization = `Bearer ${access}`;
 
-    window.history.replaceState({}, "", "/");
+    if (window.location.pathname === "/crm/login") {
+      window.history.replaceState(window.history.state, "", "/");
+    }
     setStatus("authenticated");
   };
 

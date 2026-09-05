@@ -16,7 +16,7 @@ export default function StatusTypeMaster({ permissions = {} }) {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/status-types/",
+        "/crm/api/status-types/",
       );
       setStatusTypes(response.data);
     } catch (error) {
@@ -41,12 +41,12 @@ export default function StatusTypeMaster({ permissions = {} }) {
       setLoading(true);
 
       if (editId) {
-        await axios.put(`http://127.0.0.1:8000/api/status-types/${editId}/`, {
+        await axios.put(`/crm/api/status-types/${editId}/`, {
           status_type_name: statusType,
         });
         alert("Status type updated successfully");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/status-types/", {
+        await axios.post("/crm/api/status-types/", {
           status_type_name: statusType,
         });
         alert("Status type saved successfully");
@@ -76,7 +76,7 @@ export default function StatusTypeMaster({ permissions = {} }) {
 
     try {
       setLoading(true);
-      await axios.delete(`http://127.0.0.1:8000/api/status-types/${id}/`);
+      await axios.delete(`/crm/api/status-types/${id}/`);
       alert("Status type deleted successfully");
       await loadStatusTypes();
     } catch (error) {

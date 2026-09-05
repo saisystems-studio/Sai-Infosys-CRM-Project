@@ -10,7 +10,7 @@ import {
    API CONFIGURATION
    ========================================================= */
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/crm/api";
 
 /* =========================================================
    ICON
@@ -691,7 +691,7 @@ function InquiryList({
       // Clear tokens and redirect to login
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = "/login";
+      window.location.href = "/crm/login";
       return null;
     }
   }, []);

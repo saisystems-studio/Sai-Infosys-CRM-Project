@@ -16,7 +16,7 @@ export default function RatingTypeMaster({ permissions = {} }) {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/rating-types/",
+        "/crm/api/rating-types/",
       );
       setRatingTypes(response.data);
     } catch (error) {
@@ -41,12 +41,12 @@ export default function RatingTypeMaster({ permissions = {} }) {
       setLoading(true);
 
       if (editId) {
-        await axios.put(`http://127.0.0.1:8000/api/rating-types/${editId}/`, {
+        await axios.put(`/crm/api/rating-types/${editId}/`, {
           rating_type_name: ratingType,
         });
         alert("Rating type updated successfully");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/rating-types/", {
+        await axios.post("/crm/api/rating-types/", {
           rating_type_name: ratingType,
         });
         alert("Rating type saved successfully");
@@ -76,7 +76,7 @@ export default function RatingTypeMaster({ permissions = {} }) {
 
     try {
       setLoading(true);
-      await axios.delete(`http://127.0.0.1:8000/api/rating-types/${id}/`);
+      await axios.delete(`/crm/api/rating-types/${id}/`);
       alert("Rating type deleted successfully");
       await loadRatingTypes();
     } catch (error) {

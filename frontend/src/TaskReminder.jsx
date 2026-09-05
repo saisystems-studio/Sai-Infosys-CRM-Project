@@ -8,7 +8,7 @@ import {
 } from "./taskReminderReschedule.js";
 import "./TaskReminder.css";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL = "/crm/api";
 const POLL_INTERVAL_MS = 15000;
 const REMINDER_HOURS = Array.from({ length: 12 }, (_, index) =>
   String(index + 1).padStart(2, "0"),

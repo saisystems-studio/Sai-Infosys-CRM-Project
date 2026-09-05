@@ -75,6 +75,7 @@ test("a refreshed temporary detail page returns to its permitted parent menu", (
   ];
 
   assert.equal(selectInitialMenu(menus, "Schedule Detail"), "Schedule");
+  assert.equal(selectInitialMenu(menus, "Schedule Detail", true), "Schedule Detail");
 });
 
 test("active menu is saved and restored for a browser refresh", () => {
@@ -87,4 +88,11 @@ test("active menu is saved and restored for a browser refresh", () => {
   saveActiveMenu("Customer List", storage);
 
   assert.equal(loadActiveMenu(storage), "Customer List");
+});
+
+test("refresh keeps the current page even when Dashboard is available", () => {
+  const menus = [{ Menu_Name: "Dashboard" }, { Menu_Name: "Customer List" }];
+  assert.equal(selectInitialMenu(menus, "Customer List"), "Customer List");
+  assert.equal(selectInitialMenu(menus, ""), "Dashboard");
+  assert.equal(selectInitialMenu(menus, "Unavailable Page"), "Dashboard");
 });

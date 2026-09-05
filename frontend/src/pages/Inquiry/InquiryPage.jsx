@@ -10,7 +10,7 @@ import {
    API CONFIGURATION
    ========================================================= */
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/crm/api";
 const MASTER_API = API_BASE;
 
 /* =========================================================
@@ -18,7 +18,7 @@ const MASTER_API = API_BASE;
    ========================================================= */
 
 const emptyProduct = () => ({
-  id: crypto.randomUUID(),
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
   product: "",
   quantity: 1,
   rate: "",

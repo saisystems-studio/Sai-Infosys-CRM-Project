@@ -17,6 +17,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from masters.models import CustomerTypeMaster, LicenseTypeMaster, RatingTypeMaster
+from .customer_codes import allocate_customer_code
 
 class CustomerDetailsViewSet(viewsets.ModelViewSet):
     queryset = CustomerDetails.objects.all().prefetch_related('contacts', 'licenses')
@@ -215,13 +216,12 @@ class CustomerDetailsViewSet(viewsets.ModelViewSet):
         }
 
         with transaction.atomic():
-            next_serial = self._next_customer_serial()
             imported = 0
             for reference, customer_data in parsed["customers"].items():
                 if reference in duplicate_refs:
                     continue
                 customer = CustomerDetails.objects.create(
-                    customer_code=f"CUST{next_serial:04d}SAI",
+                    customer_code=allocate_customer_code(),
                     customer_name=customer_data["Customer Name"],
                     company_name=customer_data["Company Name"],
                     email_id=customer_data["Email"],
@@ -252,7 +252,6 @@ class CustomerDetailsViewSet(viewsets.ModelViewSet):
                         created_by=request.user,
                     )
                 imported += 1
-                next_serial += 1
 
         return Response({
             "message": f"{imported} customers imported successfully.",
@@ -368,12 +367,3 @@ class CustomerDetailsViewSet(viewsets.ModelViewSet):
             return datetime.strptime(str(value).strip(), "%Y-%m-%d").date()
         except ValueError as error:
             raise ValueError(f"Licenses row {row_number}: expiry date must be YYYY-MM-DD.") from error
-
-    @staticmethod
-    def _next_customer_serial():
-        maximum = 0
-        for code in CustomerDetails.objects.select_for_update().values_list("customer_code", flat=True):
-            match = re.fullmatch(r"CUST(\d+)SAI", code or "")
-            if match:
-                maximum = max(maximum, int(match.group(1)))
-        return maximum + 1

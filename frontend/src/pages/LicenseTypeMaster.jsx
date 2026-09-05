@@ -16,7 +16,7 @@ export default function LicenseTypeMaster({ permissions = {} }) {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/license-types/",
+        "/crm/api/license-types/",
       );
       setLicenseTypes(response.data);
     } catch (error) {
@@ -41,12 +41,12 @@ export default function LicenseTypeMaster({ permissions = {} }) {
       setLoading(true);
 
       if (editId) {
-        await axios.put(`http://127.0.0.1:8000/api/license-types/${editId}/`, {
+        await axios.put(`/crm/api/license-types/${editId}/`, {
           license_type_name: licenseType,
         });
         alert("License type updated successfully");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/license-types/", {
+        await axios.post("/crm/api/license-types/", {
           license_type_name: licenseType,
         });
         alert("License type saved successfully");
@@ -76,7 +76,7 @@ export default function LicenseTypeMaster({ permissions = {} }) {
 
     try {
       setLoading(true);
-      await axios.delete(`http://127.0.0.1:8000/api/license-types/${id}/`);
+      await axios.delete(`/crm/api/license-types/${id}/`);
       alert("License type deleted successfully");
       await loadLicenseTypes();
     } catch (error) {

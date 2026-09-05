@@ -4,6 +4,7 @@ import "./Schedule.css";
 import {
   formatTaskDuration,
   getDefaultScheduleDateRange,
+  getScheduleCustomerDisplayName,
   getScheduleDateState,
   getScheduleInitials,
   getTodayDateString,
@@ -19,7 +20,7 @@ import {
   validateRevenueAmount,
 } from "./schedulePaymentPending";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL = "/crm/api";
 
 const getInitialAdminState = () => {
   try {
@@ -610,7 +611,7 @@ const Schedule = ({ onViewDetails }) => {
                       className="schedule-card"
                       role="button"
                       tabIndex={0}
-                      aria-label={`View details for ${inquiry.customer_name || "customer"}`}
+                      aria-label={`View details for ${getScheduleCustomerDisplayName(inquiry)}`}
                       data-date-state={getScheduleDateState(
                         inquiry.schedule_date,
                       )}
@@ -661,11 +662,13 @@ const Schedule = ({ onViewDetails }) => {
                       <div className="schedule-card-body">
                         <div className="schedule-customer">
                           <div className="schedule-avatar">
-                            {getScheduleInitials(inquiry.customer_name)}
+                            {getScheduleInitials(
+                              getScheduleCustomerDisplayName(inquiry),
+                            )}
                           </div>
                           <div className="schedule-customer-details">
                             <h4 className="schedule-customer-name">
-                              {inquiry.customer_name || "Unknown Customer"}
+                              {getScheduleCustomerDisplayName(inquiry)}
                             </h4>
                             <div className="schedule-contact">
                               {inquiry.phone_number && (

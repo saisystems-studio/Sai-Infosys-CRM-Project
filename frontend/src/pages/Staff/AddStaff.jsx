@@ -10,7 +10,7 @@ import {
 } from "./staffDocuments";
 import { getStaffPhoneError, normalizeStaffPhone } from "./staffPhone";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/crm/api";
 
 function AddStaff({ onCancel, editData = null, isEdit = false }) {
   const [formData, setFormData] = useState({

@@ -271,6 +271,7 @@ class InquiryProductListSerializer(serializers.ModelSerializer):
 
 class InquiryListSerializer(serializers.ModelSerializer):
     customer_name = serializers.SerializerMethodField()
+    company_name = serializers.CharField(source="Customer_Id.company_name", read_only=True, allow_null=True, default="")
     phone_number = serializers.SerializerMethodField()
     email_id = serializers.SerializerMethodField()
     tally_serial_number = serializers.SerializerMethodField()
@@ -306,6 +307,7 @@ class InquiryListSerializer(serializers.ModelSerializer):
             "id",
             "Customer_Id",
             "customer_name",
+            "company_name",
             "phone_number",
             "email_id",
             "tally_serial_number",

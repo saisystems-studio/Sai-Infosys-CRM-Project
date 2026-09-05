@@ -1,3 +1,8 @@
+function loadPageContext() {
+  try { return JSON.parse(sessionStorage.getItem("crm_page_context") || "null") || {}; }
+  catch { return {}; }
+}
+
 import { useState, useEffect } from "react";
 import "../styles/Dashboard.css";
 
@@ -10,6 +15,7 @@ import LicenseTypeMaster from "./LicenseTypeMaster";
 
 import CustomerList from "./Customers/CustomerList";
 import AddCustomer from "./Customers/AddCustomer";
+import { createCustomerSavedHandler } from "./Customers/customerNavigation.js";
 
 import InquiryPage from "./Inquiry/InquiryPage";
 import InquiryList from "./Inquiry/InquiryList";
@@ -210,10 +216,10 @@ function Dashboard() {
   const [greeting, setGreeting] = useState("");
   const [greetingEmoji, setGreetingEmoji] = useState("");
   const [staffId, setStaffId] = useState(null);
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState(() => loadPageContext().selectedStaff || null);
+  const [selectedInquiry, setSelectedInquiry] = useState(() => loadPageContext().selectedInquiry || null);
   const [selectedScheduleInquiryId, setSelectedScheduleInquiryId] =
-    useState(null);
+    useState(() => loadPageContext().selectedScheduleInquiryId || null);
   const [autoStartScheduleTask, setAutoStartScheduleTask] = useState(false);
   const [isLoadingMenus, setIsLoadingMenus] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -268,7 +274,10 @@ function Dashboard() {
 
   useEffect(() => {
     saveActiveMenu(active, sessionStorage);
-  }, [active]);
+    try {
+      sessionStorage.setItem("crm_page_context", JSON.stringify({ selectedStaff, selectedInquiry, selectedScheduleInquiryId }));
+    } catch { /* Navigation works without browser storage. */ }
+  }, [active, selectedStaff, selectedInquiry, selectedScheduleInquiryId]);
 
   /* =======================================================
      LOAD USER + GREETING + STAFF PERMISSIONS
@@ -364,7 +373,7 @@ function Dashboard() {
         // Step 1: Fetch all active menus
         console.log("📡 Fetching all active menus...");
         const menuResponse = await fetch(
-          "http://127.0.0.1:8000/api/staff/my-menus/",
+          "/crm/api/staff/my-menus/",
           {
             method: "GET",
             headers,
@@ -432,7 +441,7 @@ function Dashboard() {
 
             // Try to fetch from API
             const permissionResponse = await fetch(
-              `http://127.0.0.1:8000/api/staff-permissions/?staff_id=${staffId}`,
+              `/crm/api/staff-permissions/?staff_id=${staffId}`,
               {
                 method: "GET",
                 headers,
@@ -522,7 +531,7 @@ function Dashboard() {
         setMenus(filteredMenus);
         setAllowedMenuIds(finalAllowedIds);
         setMenuAccess(buildMenuAccess(filteredMenus));
-        setActive((current) => selectInitialMenu(filteredMenus, current));
+        setActive((current) => selectInitialMenu(filteredMenus, current, Boolean(selectedScheduleInquiryId)));
 
         // Step 6: All menus are closed by default
         setOpenMenus({});
@@ -562,7 +571,7 @@ function Dashboard() {
 
         // Fetch stats for the browser's local date.
         const statsResponse = await fetch(
-          `http://127.0.0.1:8000/api/dashboard-stats/?date=${localDate}`,
+          `/crm/api/dashboard-stats/?date=${localDate}`,
           { headers },
         );
         if (statsResponse.ok) {
@@ -669,12 +678,13 @@ function Dashboard() {
 
   const handleLogout = () => {
     sessionStorage.removeItem("crm_active_menu");
+    sessionStorage.removeItem("crm_page_context");
     localStorage.removeItem("crm_access_token");
     localStorage.removeItem("crm_refresh_token");
     localStorage.removeItem("crm_user");
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
-    window.location.replace("/login");
+    window.location.replace("/crm/login");
   };
 
   const handleAddInquiry = () => {
@@ -685,6 +695,8 @@ function Dashboard() {
   const handleAddCustomer = () => {
     setActive("Add Customer");
   };
+
+  const handleCustomerCreated = createCustomerSavedHandler(setActive);
 
   const handleAddStaff = () => {
     const mode = createStaffMode();
@@ -922,7 +934,7 @@ function Dashboard() {
               }}
             />
           ) : active === "Add Customer" ? (
-            <AddCustomer />
+            <AddCustomer onCreated={handleCustomerCreated} />
           ) : active === "Inquiry List" ? (
             <InquiryList
               onAddInquiry={handleAddInquiry}

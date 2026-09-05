@@ -61,16 +61,16 @@ test("document sizes are formatted for display", () => {
 
 test("edit mode preserves absolute staff image URLs", () => {
   const imageUrl = "http://127.0.0.1:8000/uploads/staff/photo.png";
-  assert.equal(resolveStaffMediaUrl(imageUrl, "http://127.0.0.1:8000/api"), imageUrl);
+  assert.equal(resolveStaffMediaUrl(imageUrl, "/crm/api"), imageUrl);
 });
 
 test("edit mode resolves Django media paths without duplicating uploads", () => {
   assert.equal(
-    resolveStaffMediaUrl("/uploads/staff/photo.png", "http://127.0.0.1:8000/api"),
+    resolveStaffMediaUrl("/uploads/staff/photo.png", "/crm/api"),
     "http://127.0.0.1:8000/uploads/staff/photo.png",
   );
   assert.equal(
-    resolveStaffMediaUrl("staff/photo.png", "http://127.0.0.1:8000/api"),
+    resolveStaffMediaUrl("staff/photo.png", "/crm/api"),
     "http://127.0.0.1:8000/uploads/staff/photo.png",
   );
 });
@@ -80,7 +80,7 @@ test("edit mode hydrates the saved photo and document list", () => {
   assert.deepEqual(
     getStaffEditAssets(
       { Staff_Image: "/uploads/staff/photo.png", Documents: documents },
-      "http://127.0.0.1:8000/api",
+      "/crm/api",
     ),
     {
       imagePreview: "http://127.0.0.1:8000/uploads/staff/photo.png",

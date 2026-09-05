@@ -107,8 +107,7 @@ function Login({ onLogin }) {
     setIsLoading(true);
 
     try {
-      const apiUrl =
-        import.meta.env.VITE_API_URL || "/crm/api";
+      const apiUrl = import.meta.env.VITE_API_URL || "/crm/api";
 
       const response = await fetch(`${apiUrl}/auth/login/`, {
         method: "POST",

@@ -430,7 +430,8 @@ class InquiryListSerializer(serializers.ModelSerializer):
             return False
         if (
             obj.Status_Id
-            and obj.Status_Id.status_type_name.strip().lower() == "payment pending"
+            and obj.Status_Id.status_type_name.strip().lower()
+            in {"payment pending", "completed"}
         ):
             return False
         return obj.task_progress.filter(

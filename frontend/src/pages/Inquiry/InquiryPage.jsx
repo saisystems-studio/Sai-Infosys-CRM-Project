@@ -345,7 +345,7 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
             "ID:",
             newStatus.Id,
           );
-        } else {
+        } else if (!isEdit) {
           setStatus("");
 
           console.warn('Status "New" was not found in StatusTypeMaster.');

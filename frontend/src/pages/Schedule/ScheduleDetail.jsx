@@ -1525,7 +1525,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
         </div>
       )}
 
-      {inquiry.can_move_to_payment_pending && (
+      {inquiry.can_move_to_payment_pending && !taskProcessCompleted && (
         <div className="detail-payment-panel">
           <label className="detail-unpaid-service">
             <input

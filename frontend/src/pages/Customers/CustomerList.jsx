@@ -10,7 +10,7 @@ import {
   formatCustomerImportResult,
 } from "./customerTransfer";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/crm/api";
 
 const TransferIcon = ({ type }) => {
   const paths = {
@@ -47,7 +47,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
       const token = localStorage.getItem("access_token");
       console.log("TOKEN =", token);
 
-      const response = await axios.get("http://127.0.0.1:8000/api/customers/", {
+      const response = await axios.get("/crm/api/customers/", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -74,7 +74,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
 
     try {
       const token = localStorage.getItem("access_token");
-      await axios.delete(`http://127.0.0.1:8000/api/customers/${customerId}/`, {
+      await axios.delete(`/crm/api/customers/${customerId}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

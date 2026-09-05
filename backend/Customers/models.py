@@ -19,7 +19,9 @@ class CustomerDetails(models.Model):
 
     customer_name = models.CharField(
         db_column='Customer_Name',
-        max_length=500
+        max_length=500,
+        null=True,
+        blank=True
     )
 
     company_name = models.CharField(
@@ -115,6 +117,16 @@ class CustomerDetails(models.Model):
 #endregion
 
 #end of Customer Details Model
+
+#-----------------------------------------------------------------------------------------------
+
+class CustomerCodeSequence(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    last_serial = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        db_table = 'CustomerCodeSequence_tbl'
+
 
 #-----------------------------------------------------------------------------------------------
 

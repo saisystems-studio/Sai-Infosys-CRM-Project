@@ -57,6 +57,14 @@ export function getScheduleInitials(name) {
   return `${parts[0][0]}${parts.at(-1)[0]}`.toUpperCase();
 }
 
+export function getScheduleCustomerDisplayName(inquiry = {}) {
+  return (
+    String(inquiry.company_name || "").trim() ||
+    String(inquiry.customer_name || "").trim() ||
+    "Unknown Customer"
+  );
+}
+
 export function isScheduleCardActivationKey(key) {
   return key === "Enter" || key === " ";
 }

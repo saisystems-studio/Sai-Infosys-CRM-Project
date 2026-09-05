@@ -16,7 +16,7 @@ export default function SourceTypeMaster({ permissions = {} }) {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/source-types/",
+        "/crm/api/source-types/",
       );
       setSourceTypes(response.data);
     } catch (error) {
@@ -41,12 +41,12 @@ export default function SourceTypeMaster({ permissions = {} }) {
       setLoading(true);
 
       if (editId) {
-        await axios.put(`http://127.0.0.1:8000/api/source-types/${editId}/`, {
+        await axios.put(`/crm/api/source-types/${editId}/`, {
           source_type_name: sourceType,
         });
         alert("Source type updated successfully");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/source-types/", {
+        await axios.post("/crm/api/source-types/", {
           source_type_name: sourceType,
         });
         alert("Source type saved successfully");
@@ -76,7 +76,7 @@ export default function SourceTypeMaster({ permissions = {} }) {
 
     try {
       setLoading(true);
-      await axios.delete(`http://127.0.0.1:8000/api/source-types/${id}/`);
+      await axios.delete(`/crm/api/source-types/${id}/`);
       alert("Source type deleted successfully");
       await loadSourceTypes();
     } catch (error) {

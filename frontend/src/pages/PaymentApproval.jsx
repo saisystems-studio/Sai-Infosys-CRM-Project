@@ -3,7 +3,7 @@ import "./PaymentApproval.css";
 import { canMarkPaymentReceived } from "./paymentApprovalAccess";
 import { authorizedPaymentFetch } from "./paymentPendingApi";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "/crm/api";
 
 const formatAmount = (value) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {

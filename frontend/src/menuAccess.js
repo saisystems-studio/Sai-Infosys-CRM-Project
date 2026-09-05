@@ -42,14 +42,26 @@ export function canPerform(access, menuName, action) {
   return access[menuName]?.[action] === true;
 }
 
-export function selectInitialMenu(menus = [], currentMenu = "") {
+export function selectInitialMenu(menus = [], currentMenu = "", hasDetailContext = false) {
   const refreshFallbacks = {
     "Schedule Detail": "Schedule",
     "Completed Inquiry Detail": "Completed Inquery Report",
   };
+
   const restoredMenu = refreshFallbacks[currentMenu] || currentMenu;
-  if (menus.some((menu) => menu.Menu_Name === restoredMenu)) return restoredMenu;
-  if (menus.some((menu) => menu.Menu_Name === "Overview")) return "Overview";
+
+  if (menus.some((menu) => menu.Menu_Name === restoredMenu)) {
+    return hasDetailContext && refreshFallbacks[currentMenu] ? currentMenu : restoredMenu;
+  }
+
+  if (menus.some((menu) => menu.Menu_Name === "Dashboard")) {
+    return "Dashboard";
+  }
+
+  if (menus.some((menu) => menu.Menu_Name === "Overview")) {
+    return "Overview";
+  }
+
   const firstLeaf = menus.find((menu) => menu.parent_id != null);
   return firstLeaf?.Menu_Name || menus[0]?.Menu_Name || "";
 }

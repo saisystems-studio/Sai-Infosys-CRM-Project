@@ -17,7 +17,7 @@ import {
 } from "./scheduleTaskCompletion.js";
 import "./ScheduleDetail.css";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL = "/crm/api";
 const RESCHEDULE_HOURS = Array.from({ length: 24 }, (_, hour) =>
   String(hour + 1).padStart(2, "0"),
 );
@@ -1525,7 +1525,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
         </div>
       )}
 
-      {inquiry.can_move_to_payment_pending && (
+      {inquiry.can_move_to_payment_pending && !taskProcessCompleted && (
         <div className="detail-payment-panel">
           <label className="detail-unpaid-service">
             <input

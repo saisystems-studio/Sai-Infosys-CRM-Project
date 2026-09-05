@@ -3,7 +3,7 @@ import { filterPaymentDetails, getPaymentCardSummary, getPaymentCompany, getPaym
 import "./CompletedInquiryReport/CompletedInquiryReport.css";
 import "./PaymentDetailsReport.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "/crm/api";
 const emptyFilters = { search: "", product: "", company: "", fromDate: "", toDate: "" };
 const headers = () => ({ Authorization: `Bearer ${localStorage.getItem("crm_access_token") || ""}` });
 const formatAmount = (value) => `₹${Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

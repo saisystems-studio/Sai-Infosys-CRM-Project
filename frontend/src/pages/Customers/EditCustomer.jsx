@@ -1,10 +1,15 @@
+import { normalizeTallySerialNumber } from "./customerLicenses.js";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { getRequiredCustomerErrors } from "./customerValidation.js";
+import { getContactNumberError } from "./customerContacts.js";
+import { getLicenseErrors, prepareLicensesForPayload } from "./customerLicenses.js";
 import "./AddCustomer.css";
+import { createCustomerUpdatedHandler } from "./customerNavigation.js";
 
 // Configure axios with token interceptor
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/",
+  baseURL: "/crm/api/",
 });
 
 // Add token to all requests
@@ -20,6 +25,7 @@ api.interceptors.request.use(
 );
 
 export default function EditCustomer({ customerId, onClose, onUpdate }) {
+  const handleUpdated = createCustomerUpdatedHandler(onUpdate);
   // Customer Details State
   const [customerData, setCustomerData] = useState({
     customer_code: "",
@@ -106,7 +112,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
       if (error.response?.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
+        window.location.href = "/crm/login";
       }
     }
   };
@@ -240,11 +246,27 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
 
   // License Handlers
   const handleLicenseChange = (id, field, value) => {
+    if (field === "tally_serial_number") {
+      value = normalizeTallySerialNumber(value);
+    }
     setLicenses((prev) =>
       prev.map((license) =>
         license.id === id ? { ...license, [field]: value } : license,
       ),
     );
+    const licenseIndex = licenses.findIndex((license) => license.id === id);
+    const errorField =
+      field === "tally_serial_number" ? "tally_serial" : field;
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`${errorField}_${licenseIndex}`];
+      if (field === "tally_serial_number" && !value) {
+        delete next[`license_type_${licenseIndex}`];
+        delete next[`admin_id_${licenseIndex}`];
+        delete next[`expiry_date_${licenseIndex}`];
+      }
+      return next;
+    });
     setErrorMessage("");
   };
 
@@ -282,9 +304,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
     if (!customerData.customer_code) {
       newErrors.customer_code = "Customer code is required";
     }
-    if (!customerData.customer_name) {
-      newErrors.customer_name = "Customer name is required";
-    }
+    Object.assign(newErrors, getRequiredCustomerErrors(customerData));
     if (customerData.email_id && !/\S+@\S+\.\S+/.test(customerData.email_id)) {
       newErrors.email_id = "Invalid email format";
     }
@@ -293,17 +313,15 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
       if (!contact.contact_name) {
         newErrors[`contact_name_${index}`] = "Contact name is required";
       }
-      if (!contact.contact_number) {
-        newErrors[`contact_number_${index}`] = "Contact number is required";
+      const contactNumberError = getContactNumberError(contact.contact_number);
+      if (contactNumberError) {
+        newErrors[`contact_number_${index}`] = contactNumberError;
       }
     });
 
     licenses.forEach((license, index) => {
-      if (!license.tally_serial_number) {
-        newErrors[`tally_serial_${index}`] = "Tally serial number is required";
-      }
-      if (license.expiry_date && new Date(license.expiry_date) < new Date()) {
-        newErrors[`expiry_date_${index}`] = "Expiry date cannot be in the past";
+      for (const [field, message] of Object.entries(getLicenseErrors(license))) {
+        newErrors[`${field}_${index}`] = message;
       }
     });
 
@@ -320,7 +338,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
     const token = localStorage.getItem("access_token");
     if (!token) {
       setErrorMessage("Please login to continue");
-      setTimeout(() => (window.location.href = "/login"), 2000);
+      setTimeout(() => (window.location.href = "/crm/login"), 2000);
       return;
     }
 
@@ -334,20 +352,19 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
       const payload = {
         ...customerData,
         contacts: contacts.map(({ id, _isExisting, ...rest }) => rest),
-        licenses: licenses.map(({ id, _isExisting, ...rest }) => rest),
+        licenses: prepareLicensesForPayload(licenses.map(({ _isExisting, ...rest }) => rest)),
       };
 
       await api.put(`customers/${customerId}/`, payload);
       setSuccessMessage("✅ Customer updated successfully!");
-      if (onUpdate) onUpdate();
-      setTimeout(() => onClose(), 1500);
+      handleUpdated();
     } catch (error) {
       console.error("Error updating customer:", error);
       if (error.response?.status === 401) {
         setErrorMessage("Session expired. Please login again.");
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        setTimeout(() => (window.location.href = "/login"), 2000);
+        setTimeout(() => (window.location.href = "/crm/login"), 2000);
       } else if (error.response?.data) {
         const errorData = error.response.data;
         if (typeof errorData === "object") {
@@ -427,7 +444,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
 
             <div className="form-grid">
               <div className="form-group">
-                <label>Customer Code *</label>
+                <label>Customer Code</label>
                 <input
                   type="text"
                   name="customer_code"
@@ -439,7 +456,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
               </div>
 
               <div className="form-group">
-                <label>Customer Name *</label>
+                <label>Customer Name</label>
                 <input
                   type="text"
                   name="customer_name"
@@ -456,15 +473,18 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
               </div>
 
               <div className="form-group">
-                <label>Company Name</label>
+                <label>Company Name *</label>
                 <input
                   type="text"
                   name="company_name"
                   value={customerData.company_name}
                   onChange={handleCustomerChange}
                   placeholder="Enter company name"
-                  className="customer-input"
+                  className={`customer-input ${errors.company_name ? "error" : ""}`}
                 />
+              {errors.company_name && (
+                  <span className="error-text">{errors.company_name}</span>
+                )}
               </div>
 
               <div className="form-group">
@@ -483,12 +503,12 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
               </div>
 
               <div className="form-group">
-                <label>Customer Type</label>
+                <label>Customer Type *</label>
                 <select
                   name="customer_type"
                   value={customerData.customer_type}
                   onChange={handleCustomerChange}
-                  className="customer-select"
+                  className={`customer-select ${errors.customer_type ? "error" : ""}`}
                 >
                   <option value="">Select Customer Type</option>
                   {customerTypes.map((type) => (
@@ -497,6 +517,9 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                     </option>
                   ))}
                 </select>
+              {errors.customer_type && (
+                  <span className="error-text">{errors.customer_type}</span>
+                )}
               </div>
 
               <div className="form-group">
@@ -577,15 +600,18 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
               </div>
 
               <div className="form-group">
-                <label>GST Number</label>
+                <label>GST Number *</label>
                 <input
                   type="text"
                   name="gst_number"
                   value={customerData.gst_number}
                   onChange={handleCustomerChange}
                   placeholder="Enter GST number"
-                  className="customer-input"
+                  className={`customer-input ${errors.gst_number ? "error" : ""}`}
                 />
+              {errors.gst_number && (
+                  <span className="error-text">{errors.gst_number}</span>
+                )}
               </div>
 
               <div className="form-group full-width">
@@ -744,10 +770,13 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                     </div>
                     <div className="license-row">
                       <div className="form-group">
-                        <label>Tally Serial Number *</label>
+                        <label>Tally Serial Number</label>
                         <input
                           type="text"
                           value={license.tally_serial_number}
+                          inputMode="numeric"
+                          maxLength={9}
+                          pattern="[0-9]{9}"
                           onChange={(e) =>
                             handleLicenseChange(
                               license.id,
@@ -768,7 +797,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                       </div>
 
                       <div className="form-group">
-                        <label>License Type</label>
+                        <label>License Type {license.tally_serial_number && "*"}</label>
                         <select
                           value={license.license_type}
                           onChange={(e) =>
@@ -778,7 +807,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                               e.target.value,
                             )
                           }
-                          className="customer-select"
+                          className={`customer-select ${errors[`license_type_${index}`] ? "error" : ""}`}
                         >
                           <option value="">Select License Type</option>
                           {licenseTypes.map((type) => (
@@ -787,10 +816,13 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                             </option>
                           ))}
                         </select>
+                      {errors[`license_type_${index}`] && (
+                          <span className="error-text">{errors[`license_type_${index}`]}</span>
+                        )}
                       </div>
 
                       <div className="form-group">
-                        <label>Admin ID</label>
+                        <label>Admin ID {license.tally_serial_number && "*"}</label>
                         <input
                           type="text"
                           value={license.admin_id}
@@ -802,12 +834,15 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                             )
                           }
                           placeholder="Enter admin ID"
-                          className="customer-input"
+                          className={`customer-input ${errors[`admin_id_${index}`] ? "error" : ""}`}
                         />
+                      {errors[`admin_id_${index}`] && (
+                          <span className="error-text">{errors[`admin_id_${index}`]}</span>
+                        )}
                       </div>
 
                       <div className="form-group">
-                        <label>Expiry Date</label>
+                        <label>Expiry Date {license.tally_serial_number && "*"}</label>
                         <input
                           type="date"
                           value={formatDate(license.expiry_date)}

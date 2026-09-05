@@ -460,6 +460,10 @@
         grid-column: span 2;
     }
 
+    .customer-container .form-group.half-width {
+        grid-column: span 1;
+    }
+
     .license-row {
         grid-template-columns: 1fr 1fr;
     }
@@ -485,6 +489,10 @@
     }
 
     .customer-container .form-group.full-width {
+        grid-column: span 1;
+    }
+
+    .customer-container .form-group.half-width {
         grid-column: span 1;
     }
 

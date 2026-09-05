@@ -257,6 +257,7 @@ class InquiryTaskWriteApiTests(APITestCase):
         self.assertEqual(str(product.Amount), "100.00")
         self.assertEqual(str(product.Revenue_Amount), "2500.00")
         self.assertEqual(product.Payment_Status, "Pending")
+        self.assertFalse(response.data["can_move_to_payment_pending"])
 
     def test_unpaid_service_completes_with_zero_amounts_without_payment_pending(self):
         InquiryTaskProgress.objects.create(
@@ -301,3 +302,4 @@ class InquiryTaskWriteApiTests(APITestCase):
         self.assertEqual(str(product.Invoice_Amount), "0.00")
         self.assertEqual(str(product.Revenue_Amount), "0.00")
         self.assertEqual(product.Payment_Status, "Not Required")
+        self.assertFalse(response.data["can_move_to_payment_pending"])

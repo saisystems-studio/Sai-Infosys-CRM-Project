@@ -16,7 +16,7 @@ export default function CustomerTypeMaster({ permissions = {} }) {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://127.0.0.1:8000/api/customer-types/",
+        "/crm/api/customer-types/",
       );
       setCustomerTypes(response.data);
     } catch (error) {
@@ -41,12 +41,12 @@ export default function CustomerTypeMaster({ permissions = {} }) {
       setLoading(true);
 
       if (editId) {
-        await axios.put(`http://127.0.0.1:8000/api/customer-types/${editId}/`, {
+        await axios.put(`/crm/api/customer-types/${editId}/`, {
           customer_type_name: customerType,
         });
         alert("Customer type updated successfully");
       } else {
-        await axios.post("http://127.0.0.1:8000/api/customer-types/", {
+        await axios.post("/crm/api/customer-types/", {
           customer_type_name: customerType,
         });
         alert("Customer type saved successfully");
@@ -76,7 +76,7 @@ export default function CustomerTypeMaster({ permissions = {} }) {
 
     try {
       setLoading(true);
-      await axios.delete(`http://127.0.0.1:8000/api/customer-types/${id}/`);
+      await axios.delete(`/crm/api/customer-types/${id}/`);
       alert("Customer type deleted successfully");
       await loadCustomerTypes();
     } catch (error) {

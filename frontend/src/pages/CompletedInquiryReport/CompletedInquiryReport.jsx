@@ -3,7 +3,7 @@ import axios from "axios";
 import { filterCompletedInquiryReport, getCompletedTaskSummary } from "./completedInquiryReport";
 import "./CompletedInquiryReport.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/crm/api";
 const emptyFilters = { search: "", fromDate: "", toDate: "", staffId: "", product: "" };
 
 const formatDate = (value, includeTime = false) => {

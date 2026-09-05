@@ -6,6 +6,7 @@ import {
   formatTaskDuration,
   getDefaultScheduleDateRange,
   getScheduleDateState,
+  getScheduleCustomerDisplayName,
   getScheduleInitials,
   getTodayDateString,
   getTotalTaskDurationSeconds,
@@ -45,6 +46,21 @@ test("customer names produce compact two-letter schedule avatars", () => {
   assert.equal(getScheduleInitials("Sai Infosys"), "SI");
   assert.equal(getScheduleInitials("Priya"), "PR");
   assert.equal(getScheduleInitials(""), "CU");
+});
+
+test("schedule cards prefer company name over customer name", () => {
+  assert.equal(
+    getScheduleCustomerDisplayName({
+      company_name: "Sai Infosys Pvt Ltd",
+      customer_name: "Velmurugan",
+    }),
+    "Sai Infosys Pvt Ltd",
+  );
+  assert.equal(
+    getScheduleCustomerDisplayName({ customer_name: "Velmurugan" }),
+    "Velmurugan",
+  );
+  assert.equal(getScheduleCustomerDisplayName({}), "Unknown Customer");
 });
 
 test("task duration combines completed sessions with the active session", () => {

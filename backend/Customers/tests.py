@@ -20,6 +20,67 @@ class CustomerLicenseDetailsSerializerTests(SimpleTestCase):
         self.assertEqual(serializer.validated_data["expiry_date"], past_date)
 
 
+class CustomerGSTValidationTests(TestCase):
+    def test_optional_gst(self):
+        for data in [{}, {"gst_number": ""}, {"gst_number": None}]:
+            serializer = CustomerDetailsSerializer(data=data)
+            self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_invalid_length(self):
+        for value in ["12345", "1" * 16]:
+            serializer = CustomerDetailsSerializer(data={"gst_number": value})
+            self.assertFalse(serializer.is_valid())
+            self.assertIn("gst_number", serializer.errors)
+
+    def test_duplicate_and_unchanged_gst(self):
+        customer = CustomerDetails.objects.create(
+            customer_code="GST-TEST", gst_number="29ABCDE1234F1Z5",
+            created_by=User.objects.create_user(username="gst-test-user"),
+        )
+        data = {"gst_number": " 29abcde1234f1z5 "}
+        duplicate = CustomerDetailsSerializer(data=data)
+        self.assertFalse(duplicate.is_valid())
+        self.assertIn("already exists", str(duplicate.errors["gst_number"]))
+        unchanged = CustomerDetailsSerializer(customer, data=data, partial=True)
+        self.assertTrue(unchanged.is_valid(), unchanged.errors)
+        self.assertEqual(unchanged.validated_data["gst_number"], customer.gst_number)
+
+
+class CustomerIdentifierValidationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="identifier-test")
+        self.customer = CustomerDetails.objects.create(
+            customer_code="IDENT-1", created_by=self.user,
+        )
+        self.customer.contacts.create(contact_name="Contact", contact_number="9876543210", created_by=self.user)
+        self.customer.licenses.create(tally_serial_number="TALLY123", created_by=self.user)
+
+    def test_rejects_existing_identifiers(self):
+        for field, rows in [
+            ("contacts", [{"contact_name": "Other", "contact_number": "9876543210"}]),
+            ("licenses", [{"tally_serial_number": " tally123 "}]),
+        ]:
+            serializer = CustomerDetailsSerializer(data={field: rows})
+            self.assertFalse(serializer.is_valid())
+            self.assertIn("already exists", str(serializer.errors[field]))
+
+    def test_rejects_repeated_rows(self):
+        for field, row in [
+            ("contacts", {"contact_name": "New", "contact_number": "9123456780"}),
+            ("licenses", {"tally_serial_number": "NEW123"}),
+        ]:
+            serializer = CustomerDetailsSerializer(data={field: [row, row]})
+            self.assertFalse(serializer.is_valid())
+            self.assertIn(field, serializer.errors)
+
+    def test_allows_own_identifiers_and_blank_serials(self):
+        serializer = CustomerDetailsSerializer(self.customer, data={
+            "contacts": [{"contact_name": "Contact", "contact_number": "9876543210"}],
+            "licenses": [{"tally_serial_number": "TALLY123"}, {"tally_serial_number": ""}, {"tally_serial_number": ""}],
+        }, partial=True)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+
 class CustomerCodeAllocationTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="customer-code-user")

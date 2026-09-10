@@ -119,13 +119,16 @@ export default function PaymentApproval() {
 
   return (
     <section className="payment-approval-page">
-      <div className="payment-approval-heading">
+      <div className="payment-approval-heading payment-finance-banner">
         <div>
           <span className="payment-approval-kicker">Finance control</span>
           <h1>Payment Approval</h1>
           <p>Review each payment saved from Payment Pending.</p>
         </div>
-        <span className="payment-approval-count">{filteredPayments.length} payments</span>
+        <span className="payment-approval-count">
+          <strong>{filteredPayments.length}</strong>
+          <span>Payments</span>
+        </span>
       </div>
 
       {error && <div className="payment-approval-error">{error}</div>}
@@ -182,10 +185,10 @@ export default function PaymentApproval() {
                   <th>Company</th>
                   <th>Product</th>
                   <th>Payment Date</th>
-                  <th>Revenue Amount</th>
-                  <th>Payment Amount</th>
+                  <th className="payment-approval-amount-column">Revenue Amount</th>
+                  <th className="payment-approval-amount-column">Payment Amount</th>
                   <th>Payment Type</th>
-                  <th>Remaining</th>
+                  <th className="payment-approval-amount-column">Remaining</th>
                   <th>Status / Action</th>
                 </tr>
               </thead>
@@ -196,10 +199,10 @@ export default function PaymentApproval() {
                     <td>{payment.company_name || "-"}</td>
                     <td>{getPaymentProduct(payment)}</td>
                     <td>{formatDate(payment.payment_date)}</td>
-                    <td className="payment-approval-revenue">{formatAmount(payment.revenue_amount)}</td>
-                    <td>{formatAmount(payment.payment_amount)}</td>
+                    <td className="payment-approval-revenue payment-approval-amount-column">{formatAmount(payment.revenue_amount)}</td>
+                    <td className="payment-approval-amount-column">{formatAmount(payment.payment_amount)}</td>
                     <td>{payment.payment_type === "full" ? "Full Payment" : "Installment"}</td>
-                    <td className="payment-approval-balance">{formatAmount(payment.remaining_balance)}</td>
+                    <td className="payment-approval-balance payment-approval-amount-column">{formatAmount(payment.remaining_balance)}</td>
                     <td>
                       {!canMarkReceived || payment.approval_status !== "Pending" ? (
                         <span className={payment.approval_status === "Received" ? "payment-status received" : "payment-status pending"}>

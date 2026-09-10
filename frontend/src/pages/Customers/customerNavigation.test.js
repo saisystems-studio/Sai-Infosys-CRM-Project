@@ -17,15 +17,16 @@ test("successful customer creation navigates to Customer List", () => {
   assert.equal(activePage, "Customer List");
 });
 
-test("successful customer update refreshes data without closing the modal", () => {
+test("successful customer update closes the modal and refreshes the list", () => {
   let refreshCount = 0;
   let modalOpen = true;
-  const handleUpdated = createCustomerUpdatedHandler(() => {
-    refreshCount += 1;
-  });
+  const handleUpdated = createCustomerUpdatedHandler(
+    () => { refreshCount += 1; },
+    () => { modalOpen = false; },
+  );
 
   handleUpdated();
 
   assert.equal(refreshCount, 1);
-  assert.equal(modalOpen, true);
+  assert.equal(modalOpen, false);
 });

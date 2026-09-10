@@ -2,6 +2,9 @@ export function createCustomerSavedHandler(navigate) {
   return () => navigate("Customer List");
 }
 
-export function createCustomerUpdatedHandler(refreshCustomers) {
-  return () => refreshCustomers?.();
+export function createCustomerUpdatedHandler(refreshCustomers, closeModal) {
+  return () => {
+    closeModal?.();
+    return refreshCustomers?.();
+  };
 }

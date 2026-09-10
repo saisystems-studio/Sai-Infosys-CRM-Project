@@ -3,6 +3,14 @@ const normalizeRole = (role = "") =>
 
 export const ACTIVE_MENU_STORAGE_KEY = "crm_active_menu";
 
+export function canViewStaffPerformanceReport(user = {}) {
+  return normalizeRole(user?.role || user?.user_type) === "super admin";
+}
+
+export function canViewCustomerBusinessSummaryReport(user = {}) {
+  return normalizeRole(user?.role || user?.user_type) === "super admin";
+}
+
 export function loadActiveMenu(storage) {
   try {
     return storage?.getItem(ACTIVE_MENU_STORAGE_KEY) || "";

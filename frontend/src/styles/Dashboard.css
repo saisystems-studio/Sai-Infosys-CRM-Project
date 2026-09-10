@@ -123,7 +123,16 @@
 
 .side-nav {
     margin-top: 25px;
-    flex: 1
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 12px;
+    scrollbar-width: none;
+}
+
+.side-nav::-webkit-scrollbar {
+    display: none;
 }
 
 .side-nav p,
@@ -546,6 +555,11 @@
     font-size: 9px;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.dashboard-inquiry-customer {
+    color: #65708a !important;
+    font-weight: 400;
 }
 
 .dashboard-inquiry-products {

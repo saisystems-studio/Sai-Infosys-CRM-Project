@@ -25,7 +25,7 @@ api.interceptors.request.use(
 );
 
 export default function EditCustomer({ customerId, onClose, onUpdate }) {
-  const handleUpdated = createCustomerUpdatedHandler(onUpdate);
+  const handleUpdated = createCustomerUpdatedHandler(onUpdate, onClose);
   // Customer Details State
   const [customerData, setCustomerData] = useState({
     customer_code: "",

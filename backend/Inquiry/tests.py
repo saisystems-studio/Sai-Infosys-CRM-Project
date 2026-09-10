@@ -408,6 +408,29 @@ class PaymentApprovalAccessTests(TestCase):
         self.assertEqual({item["payment_amount"] for item in payments}, {"4.00", "1.00"})
         self.assertTrue(all(item["total_paid"] == "5.00" for item in payments))
 
+    def test_received_report_lists_the_same_received_payment_transactions(self):
+        """The report must use ledger rows, not the product's Amount field."""
+        received = PaymentDetail.objects.create(
+            Inquiry_Product=self.pending_payment,
+            Amount=Decimal("4.00"),
+            Payment_Type=PaymentDetail.PaymentType.INSTALLMENT,
+            Created_By=self.admin_user,
+            Approval_Status=PaymentDetail.PaymentApprovalStatus.RECEIVED,
+        )
+        PaymentDetail.objects.create(
+            Inquiry_Product=self.pending_payment,
+            Amount=Decimal("6.00"),
+            Payment_Type=PaymentDetail.PaymentType.INSTALLMENT,
+            Created_By=self.admin_user,
+        )
+
+        response = self.client.get("/api/inquiries/payment-received-details/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.data], [received.Id])
+        self.assertEqual(response.data[0]["payment_amount"], "4.00")
+        self.assertEqual(response.data[0]["payment_type"], "installment")
+
     def test_super_admin_cannot_record_a_payment_from_pending(self):
         """Fails if the approval role can bypass the Admin payment-entry flow."""
         self.client.force_authenticate(self.super_admin_user)

@@ -1,1 +1,210 @@
-.payment-details-header{background:linear-gradient(120deg,#334e68,#5657df)}.payment-details-avatar{background:#e7e7ff;color:#4f46e5}.payment-details-revenue{color:#087148}.payment-details-company{display:grid;gap:2px;margin:8px;padding:7px 8px;border-left:3px solid #6366f1;border-radius:0 7px 7px 0;background:#f5f5ff}.payment-details-company span{font-size:8px;text-transform:uppercase;color:#7c83a0}.payment-details-company strong{overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}.payment-details-card footer{color:#7b8797;font-size:9px}.payment-details-card footer strong{color:#48576a;font-size:9px}.payment-details-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:12px 0 16px}.payment-details-summary-card{display:grid;gap:6px;padding:14px 16px;border:1px solid #e7ebf1;border-radius:14px;background:linear-gradient(180deg,#ffffff,#f8fbff);box-shadow:0 8px 20px rgba(19,35,54,.05)}.payment-details-summary-card span{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#72829b}.payment-details-summary-card strong{font-size:20px;font-weight:800;color:#1d2b3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.payment-details-summary-card small{font-size:10px;color:#5d6a7d}.payment-details-summary-card.accent{background:linear-gradient(135deg,#eef7ff,#f3edff);border-color:#dfe8ff}.payment-details-summary-card.accent strong{color:#2b4cdd}@media (max-width:1080px){.payment-details-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:640px){.payment-details-summary{grid-template-columns:1fr}}
+.payment-details-header {
+    background: linear-gradient(120deg, #334e68, #5657df)
+}
+
+.payment-details-avatar {
+    background: #e7e7ff;
+    color: #4f46e5
+}
+
+.payment-details-revenue {
+    color: #087148
+}
+
+.payment-details-company {
+    display: grid;
+    gap: 2px;
+    margin: 8px;
+    padding: 7px 8px;
+    border-left: 3px solid #6366f1;
+    border-radius: 0 7px 7px 0;
+    background: #f5f5ff
+}
+
+.payment-details-company span {
+    font-size: 8px;
+    text-transform: uppercase;
+    color: #7c83a0
+}
+
+.payment-details-company strong {
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.payment-details-card footer {
+    color: #7b8797;
+    font-size: 9px
+}
+
+.payment-details-card footer strong {
+    color: #48576a;
+    font-size: 9px
+}
+
+.payment-details-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 12px 0 16px
+}
+
+.payment-details-summary-card {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border: 1px solid #e7ebf1;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+    box-shadow: 0 8px 20px rgba(19, 35, 54, .05)
+}
+
+.payment-details-summary-card span {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #72829b
+}
+
+.payment-details-summary-card strong {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1d2b3a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.payment-details-summary-card small {
+    font-size: 10px;
+    color: #5d6a7d
+}
+
+.payment-details-summary-card.accent {
+    background: linear-gradient(135deg, #eef7ff, #f3edff);
+    border-color: #dfe8ff
+}
+
+.payment-details-summary-card.accent strong {
+    color: #2b4cdd
+}
+
+@media (max-width:1080px) {
+    .payment-details-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+}
+
+@media (max-width:640px) {
+    .payment-details-summary {
+        grid-template-columns: 1fr
+    }
+}
+
+/* ==========================================================================
+   FIX: these ancestors need min-width:0 or a flex/grid parent will refuse
+   to shrink .payment-details-table-wrap, which stops its own overflow-x:auto
+   from ever kicking in — that's what was pushing "Remaining"/"Status" out
+   past the visible edge instead of making them scrollable.
+   ========================================================================== */
+.payment-details-report,
+.completed-report-page {
+    min-width: 0;
+}
+
+.payment-details-table-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    /* critical: allows this wrap to shrink inside its flex/grid parent */
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e0e7ed;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(30, 55, 80, .06);
+}
+
+.payment-details-table {
+    min-width: 1140px;
+    width: max-content;
+    /* table is exactly as wide as its columns need, not forced to 100% */
+}
+
+.payment-details-table-head,
+.payment-details-table-row {
+    display: grid;
+    grid-template-columns: 75px minmax(125px, 1fr) minmax(145px, 1.1fr) minmax(120px, .9fr) minmax(95px, .75fr) minmax(110px, .8fr) minmax(100px, .75fr) minmax(110px, .85fr) minmax(100px, .75fr) 95px;
+}
+
+.payment-details-table-head {
+    min-height: 42px;
+    align-items: center;
+    background: #f6f9fb;
+    color: #53677b;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.payment-details-table-row {
+    min-height: 54px;
+    align-items: stretch;
+    border-top: 1px solid #edf1f4;
+    color: #334155;
+    font-size: 12px;
+}
+
+.payment-details-table-row:hover {
+    background: #f9fcfc
+}
+
+.payment-details-table-head>span,
+.payment-details-table-row>span {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    padding: 9px 10px;
+    overflow-wrap: anywhere;
+}
+
+.payment-details-table-head>span:nth-child(6),
+.payment-details-table-head>span:nth-child(7),
+.payment-details-table-head>span:nth-child(9),
+.payment-details-paid,
+.payment-details-revenue,
+.payment-details-remaining {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.payment-details-customer {
+    color: #172033;
+    font-weight: 700
+}
+
+.payment-details-paid,
+.payment-details-remaining {
+    color: #126b5b;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800
+}
+
+.payment-details-status {
+    display: inline-flex;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #e2f7ed;
+    color: #087148;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap
+}

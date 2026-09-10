@@ -19,6 +19,7 @@ from .serializers import (
     InvoiceAmountSerializer,
     CallbackRescheduleSerializer,
     PaymentPendingSerializer,
+    PaymentFollowUpSerializer,
     TaskProgressSaveSerializer,
     CompletedInquiryReportSerializer,
 )
@@ -34,7 +35,7 @@ from .task_progress import (
 from .payment_ledger import approve_payment_detail, record_payment
 from staff.access import HasMenuPermission, get_staff, has_full_access, menu_permission, normalize_role
 from staff.models import StaffDetails
-from .models import InquiryProductDetails_tbl, PaymentDetail
+from .models import InquiryProductDetails_tbl, PaymentDetail, PaymentFollowUp
 
 
 class InquiryViewSet(
@@ -214,6 +215,32 @@ class InquiryViewSet(
         )
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get", "post"], url_path=r"payment-pending/(?P<product_id>[^/.]+)/follow-up")
+    def payment_follow_up(self, request, product_id=None):
+        self._require_admin(request)
+        product = (
+            InquiryProductDetails_tbl.objects
+            .select_related("Inquiry_Id__Customer_Id")
+            .filter(pk=product_id)
+            .first()
+        )
+        if product is None:
+            return Response({"detail": "Pending payment was not found."}, status=404)
+
+        if request.method == "GET":
+            return Response(PaymentFollowUpSerializer(
+                product.payment_follow_ups.all(), many=True,
+            ).data)
+
+        serializer = PaymentFollowUpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        follow_up = serializer.save(
+            Inquiry_Product=product,
+            Customer=product.Inquiry_Id.Customer_Id,
+            Created_By=request.user,
+        )
+        return Response(PaymentFollowUpSerializer(follow_up).data, status=201)
+
     @action(detail=True, methods=["post"], url_path="start-task")
     def start_task(self, request, pk=None):
         progress = start_inquiry_task(
@@ -289,11 +316,11 @@ class InquiryViewSet(
     def payment_received_details(self, request):
         self._require_received_details_viewer(request)
         records = (
-            self._payment_summary_records()
-            .filter(Payment_Status="Received")
-            .order_by("-Created_On")
+            self._payment_approval_entries()
+            .filter(Approval_Status=PaymentDetail.PaymentApprovalStatus.RECEIVED)
+            .order_by("-Payment_Date", "-Id")
         )
-        return Response(PaymentApprovalSerializer(records, many=True).data)
+        return Response(PaymentApprovalEntrySerializer(records, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="payment-pending")
     def payment_pending(self, request):

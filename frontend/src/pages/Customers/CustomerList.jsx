@@ -19,7 +19,15 @@ const TransferIcon = ({ type }) => {
     export: <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" />,
   };
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
       {paths[type]}
     </svg>
   );
@@ -64,7 +72,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   // Handle Delete
   const handleDelete = async (customerId, customerName) => {
@@ -88,13 +96,12 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
     }
   };
 
-  // Handle View - Opens modal
+  // Handle Edit - Opens modal
   const handleView = (customerId) => {
     setSelectedCustomerId(customerId);
     setShowViewModal(true);
   };
 
-  // Handle Edit - Opens modal
   const handleEdit = (customerId) => {
     setSelectedCustomerId(customerId);
     setShowEditModal(true);
@@ -162,36 +169,42 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
       setTransferState({ type: "", message: "" });
       const token = getToken();
 
-      const response = await axios.get(
-        `${API_BASE}/customers/export/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          responseType: "blob",
+      const response = await axios.get(`${API_BASE}/customers/export/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+        responseType: "blob",
+      });
 
       downloadBlob(response.data, "Customers.xlsx");
-      setTransferState({ type: "success", message: "Customer export downloaded." });
+      setTransferState({
+        type: "success",
+        message: "Customer export downloaded.",
+      });
     } catch (error) {
       console.error(error);
       setTransferState({ type: "error", message: "Customer export failed." });
     } finally {
       setTransferLoading("");
     }
-  }
+  };
 
   const handleTemplateDownload = async () => {
     try {
       setTransferLoading("template");
       setTransferState({ type: "", message: "" });
-      const response = await axios.get(`${API_BASE}/customers/import_template/`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        responseType: "blob",
-      });
+      const response = await axios.get(
+        `${API_BASE}/customers/import_template/`,
+        {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          responseType: "blob",
+        },
+      );
       downloadBlob(response.data, "Customer_Import_Template.xlsx");
-      setTransferState({ type: "success", message: "Import template downloaded." });
+      setTransferState({
+        type: "success",
+        message: "Import template downloaded.",
+      });
     } catch (error) {
       console.error(error);
       setTransferState({ type: "error", message: "Template download failed." });
@@ -213,25 +226,26 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
       setTransferState({ type: "", message: "" });
       const token = getToken();
 
-      await axios.post(
-        `${API_BASE}/customers/import_excel/`,
-        formData,
-        {
+      await axios
+        .post(`${API_BASE}/customers/import_excel/`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        },
-      ).then((response) => {
-        setTransferState({
-          type: "success",
-          message: formatCustomerImportResult(response.data),
+        })
+        .then((response) => {
+          setTransferState({
+            type: "success",
+            message: formatCustomerImportResult(response.data),
+          });
         });
-      });
 
       fetchCustomers();
     } catch (error) {
       console.error(error);
-      setTransferState({ type: "error", message: formatCustomerImportError(error) });
+      setTransferState({
+        type: "error",
+        message: formatCustomerImportError(error),
+      });
     } finally {
       setTransferLoading("");
       e.target.value = "";
@@ -323,11 +337,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
           />
 
           {permissions.add && (
-            <button
-              type="button"
-              className="add-btn"
-              onClick={onAddCustomer}
-            >
+            <button type="button" className="add-btn" onClick={onAddCustomer}>
               Add Customer
             </button>
           )}
@@ -345,8 +355,8 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
           <table className="customer-table">
             <colgroup>
               <col className="code-column" />
-              <col className="name-column" />
               <col className="company-column" />
+              <col className="name-column" />
               <col className="contact-column" />
               <col className="email-column" />
               <col className="address-column" />
@@ -356,8 +366,8 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
             <thead>
               <tr>
                 <th>Code</th>
-                <th>Customer Name</th>
                 <th>Company</th>
+                <th>Customer Name</th>
                 <th>Contact Number</th>
                 <th>Email</th>
                 <th>Address</th>
@@ -385,15 +395,23 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
                       </span>
                     </td>
                     <td>
-                      <span className="customer-name">
+                      <span className="company-name">
                         <span className="avatar">
-                          {getInitials(customer.customer_name)}
+                          {getInitials(customer.company_name)}
                         </span>
+                        {customer.company_name || "-"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="customer-name customer-name-secondary">
                         {customer.customer_name || "-"}
                       </span>
                     </td>
-                    <td>{customer.company_name || "-"}</td>
-                    <td>{customer.contact_number || "-"}</td>
+                    <td>
+                      <span className="customer-contact-number">
+                        {customer.contact_number || "-"}
+                      </span>
+                    </td>
                     <td>{customer.email_id || "-"}</td>
                     <td className="address-cell">{customer.address || "-"}</td>
                     <td>{customer.gst_number || "-"}</td>
@@ -402,7 +420,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
                         {permissions.view && (
                           <button
                             type="button"
-                            className="action-btn view-btn"
+                            className="customer-action-btn customer-view-btn"
                             onClick={() => handleView(customer.id)}
                             aria-label="View customer"
                           >
@@ -412,7 +430,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
                         {permissions.edit && (
                           <button
                             type="button"
-                            className="action-btn edit-btn"
+                            className="customer-action-btn customer-edit-btn"
                             onClick={() => handleEdit(customer.id)}
                             aria-label="Edit customer"
                           >
@@ -422,7 +440,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
                         {permissions.delete && (
                           <button
                             type="button"
-                            className="action-btn delete-btn"
+                            className="customer-action-btn customer-delete-btn"
                             onClick={() =>
                               handleDelete(customer.id, customer.customer_name)
                             }
@@ -492,14 +510,12 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
         )}
       </div>
 
-      {/* View Customer Modal */}
-      {showViewModal && (
+      {showViewModal && selectedCustomerId && (
         <ViewCustomer
           customerId={selectedCustomerId}
           onClose={closeViewModal}
         />
       )}
-
     </div>
   );
 }

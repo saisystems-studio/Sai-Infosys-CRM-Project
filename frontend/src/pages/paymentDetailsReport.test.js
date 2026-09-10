@@ -32,3 +32,11 @@ test("payment card summary exposes paid and revenue values", () => {
     revenueAmount: 5000,
   });
 });
+
+test("payment report uses the approved transaction amount when available", () => {
+  assert.equal(
+    getPaymentCardSummary({ ...payment, amount: "1.00", payment_amount: "500.00" })
+      .paidAmount,
+    500,
+  );
+});

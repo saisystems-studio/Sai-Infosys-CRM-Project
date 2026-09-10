@@ -542,7 +542,38 @@ export default function AddCustomer({
       } else if (error.response?.data) {
         const errorData = error.response.data;
         if (typeof errorData === "object") {
-          const errorMessages = Object.values(errorData).flat().join("\n");
+          if (errorData.gst_number) {
+            setErrors((prev) => ({
+              ...prev,
+              gst_number: Array.isArray(errorData.gst_number)
+                ? errorData.gst_number.join(" ")
+                : errorData.gst_number,
+            }));
+          }
+          const collectMessages = (value) =>
+            value && typeof value === "object"
+              ? Object.values(value).flatMap(collectMessages)
+              : [String(value)];
+          const nestedErrors = {};
+          for (const [group, field, prefix] of [
+            ["contacts", "contact_number", "contact_number"],
+            ["licenses", "tally_serial_number", "tally_serial"],
+          ]) {
+            if (Array.isArray(errorData[group])) {
+              errorData[group].forEach((row, index) => {
+                if (row?.[field]) {
+                  nestedErrors[`${prefix}_${index}`] = collectMessages(row[field]).join(" ");
+                }
+              });
+            }
+          }
+          setErrors((prev) => ({ ...prev, ...nestedErrors }));
+          setSections((prev) => ({
+            ...prev,
+            ...(errorData.contacts ? { contacts: true } : {}),
+            ...(errorData.licenses ? { licenses: true } : {}),
+          }));
+          const errorMessages = collectMessages(errorData).join("\n");
           setErrorMessage(`Error: ${errorMessages}`);
         } else {
           setErrorMessage(`Error: ${errorData}`);
@@ -787,7 +818,7 @@ export default function AddCustomer({
             </div>
 
             <div className="form-group half-width">
-              <label>GST Number {!isEditMode && "*"}</label>
+              <label>GST Number</label>
               <input
                 type="text"
                 name="gst_number"

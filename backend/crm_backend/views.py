@@ -8,9 +8,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from staff.access import get_staff, has_full_access
+from staff.access import get_staff, has_full_access, normalize_role
 from Customers.models import CustomerDetails
-from Inquiry.models import InquiryDetails_tbl, InquiryProductDetails_tbl
+from Inquiry.models import InquiryDetails_tbl, InquiryProductDetails_tbl, PaymentDetail
 from Inquiry.models import InquiryTaskProgress
 from Inquiry.serializers import InquiryListSerializer
 
@@ -164,4 +164,118 @@ def dashboard_stats(request):
         "completedSchedules": completed_inquiries.count(),
         "completedRevenue": completed_revenue,
         "dashboardInquiries": dashboard_rows,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def customer_business_summary(request):
+    staff = get_staff(request.user)
+    if normalize_role(getattr(staff, "Role", "")) != "super admin":
+        return Response(
+            {"detail": "Only Super Admin can access the customer business summary report."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    customers = CustomerDetails.objects.select_related(
+        "customer_type", "customer_rating"
+    ).order_by("customer_name", "id")
+    inquiries = InquiryDetails_tbl.objects.select_related(
+        "Customer_Id", "Status_Id", "Source_Id", "Resource_Id"
+    ).prefetch_related(
+        "inquiryproductdetails_tbl_set__ProductType_Id",
+        "task_progress__Resource_Id",
+    )
+    payments = PaymentDetail.objects.select_related(
+        "Inquiry_Product__Inquiry_Id__Customer_Id",
+        "Inquiry_Product__ProductType_Id",
+        "Inquiry_Product__Inquiry_Id__Resource_Id",
+    )
+
+    customer_rows = [
+        {
+            "id": str(customer.id),
+            "name": customer.customer_name or "Unknown Customer",
+            "company": customer.company_name or "",
+            "mobile": "",
+            "email": customer.email_id or "",
+            "customerType": customer.customer_type.customer_type_name
+            if customer.customer_type else "",
+            "rating": customer.customer_rating.rating_type_name
+            if customer.customer_rating else "",
+            "resource": "",
+            "createdDate": customer.created_on.date().isoformat(),
+            "location": ", ".join(
+                value for value in [customer.city, customer.state, customer.country]
+                if value
+            ),
+        }
+        for customer in customers
+    ]
+
+    inquiry_rows = []
+    schedule_rows = []
+    for inquiry in inquiries:
+        customer_id = str(inquiry.Customer_Id_id)
+        resource = inquiry.Resource_Id.Full_Name if inquiry.Resource_Id else ""
+        status_name = inquiry.Status_Id.status_type_name if inquiry.Status_Id else "New"
+        inquiry_products = list(inquiry.inquiryproductdetails_tbl_set.all())
+        task_progress = list(inquiry.task_progress.all())
+        product = (
+            inquiry_products[0].ProductType_Id.product_type_name
+            if inquiry_products and inquiry_products[0].ProductType_Id else ""
+        )
+        expected_revenue = sum(
+            (item.Amount or 0) for item in inquiry_products
+        )
+        inquiry_rows.append({
+            "id": f"i-{inquiry.pk}",
+            "customerId": customer_id,
+            "product": product,
+            "resource": resource,
+            "date": inquiry.Created_On.date().isoformat(),
+            "source": inquiry.Source_Id.source_type_name if inquiry.Source_Id else "",
+            "status": status_name,
+            "expectedRevenue": float(expected_revenue),
+            "remarks": "",
+            "taskProgressCount": len(task_progress),
+            "hasActiveTask": any(progress.End_Time is None for progress in task_progress),
+        })
+        schedule_rows.append({
+            "id": f"s-{inquiry.pk}",
+            "customerId": customer_id,
+            "product": product,
+            "resource": resource,
+            "date": inquiry.Shedule_Date.isoformat(),
+            "createdDate": inquiry.Created_On.date().isoformat(),
+            "completedDate": inquiry.Shedule_Date.isoformat()
+            if status_name.lower() == "completed" else None,
+            "status": status_name,
+            "remarks": "",
+        })
+
+    transaction_rows = [
+        {
+            "id": f"p-{payment.pk}",
+            "inquiryId": f"i-{payment.Inquiry_Product.Inquiry_Id_id}",
+            "customerId": str(payment.Inquiry_Product.Inquiry_Id.Customer_Id_id),
+            "product": payment.Inquiry_Product.ProductType_Id.product_type_name
+            if payment.Inquiry_Product.ProductType_Id else "",
+            "resource": payment.Inquiry_Product.Inquiry_Id.Resource_Id.Full_Name
+            if payment.Inquiry_Product.Inquiry_Id.Resource_Id else "",
+            "category": payment.Inquiry_Product.ProductType_Id.product_type_name
+            if payment.Inquiry_Product.ProductType_Id else "Other",
+            "date": payment.Payment_Date.date().isoformat(),
+            "amount": float(payment.Amount or 0),
+            "remarks": "",
+        }
+        for payment in payments
+    ]
+
+    return Response({
+        "customers": customer_rows,
+        "inquiries": inquiry_rows,
+        "schedules": schedule_rows,
+        "transactions": transaction_rows,
+        "events": [],
     })

@@ -12,6 +12,7 @@ from .models import (
     InquiryDetails_tbl,
     InquiryProductDetails_tbl,
     InquiryTaskProgress,
+    PaymentFollowUp,
     PaymentDetail,
     TaskStatus,
 )
@@ -183,6 +184,19 @@ class PaymentRecordSerializer(serializers.Serializer):
         min_value=Decimal("0.01"),
     )
     payment_type = serializers.ChoiceField(choices=("full", "installment"))
+
+
+class PaymentFollowUpSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentFollowUp
+        fields = [
+            "FollowUp_Id",
+            "FollowUp_Date",
+            "FollowUp_Type",
+            "Notes",
+            "Created_On",
+        ]
+        read_only_fields = ["FollowUp_Id", "Created_On"]
 
 
 # ============================================================

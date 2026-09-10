@@ -210,6 +210,40 @@ class PaymentDetail(models.Model):
         db_table = "PaymentDetail_tbl"
 
 
+class PaymentFollowUp(models.Model):
+    FollowUp_Id = models.AutoField(primary_key=True, db_column="FollowUp_Id")
+    Inquiry_Product = models.ForeignKey(
+        InquiryProductDetails_tbl,
+        on_delete=models.CASCADE,
+        related_name="payment_follow_ups",
+        db_column="Inquiry_Product_Id",
+    )
+    Customer = models.ForeignKey(
+        CustomerDetails,
+        on_delete=models.CASCADE,
+        db_column="Customer_Id",
+    )
+    FollowUp_Date = models.DateField(db_column="FollowUp_Date")
+    FollowUp_Type = models.CharField(
+        max_length=10,
+        choices=[("call", "Call"), ("email", "Email"), ("meeting", "Meeting")],
+        blank=True,
+        default="",
+        db_column="FollowUp_Type",
+    )
+    Notes = models.TextField(blank=True, db_column="Notes")
+    Created_By = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        db_column="Created_By",
+    )
+    Created_On = models.DateTimeField(auto_now_add=True, db_column="Created_On")
+
+    class Meta:
+        db_table = "PaymentFollowUp_tbl"
+        ordering = ["-FollowUp_Date", "-FollowUp_Id"]
+
+
 #--------------------------------------------------------------------------
 
 

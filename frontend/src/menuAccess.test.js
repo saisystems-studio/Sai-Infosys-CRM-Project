@@ -4,11 +4,34 @@ import assert from "node:assert/strict";
 import {
   buildMenuAccess,
   canPerform,
+  canViewCustomerBusinessSummaryReport,
+  canViewStaffPerformanceReport,
   hasFullMenuAccess,
   loadActiveMenu,
   saveActiveMenu,
   selectInitialMenu,
 } from "./menuAccess.js";
+
+test("Staff Performance Report is restricted to the Super Admin role", () => {
+  for (const role of ["Super Admin", "super_admin", " SUPER-ADMIN "]) {
+    assert.equal(canViewStaffPerformanceReport({ role }), true);
+  }
+  for (const role of ["Admin", "Staff", "Sales", ""]) {
+    assert.equal(canViewStaffPerformanceReport({ role, is_superuser: true }), false);
+  }
+  assert.equal(canViewStaffPerformanceReport({ user_type: "Super Admin" }), true);
+  assert.equal(canViewStaffPerformanceReport(), false);
+  assert.equal(canViewStaffPerformanceReport(null), false);
+});
+
+test("Customer Business Summary Report is restricted to the Super Admin role", () => {
+  assert.equal(canViewCustomerBusinessSummaryReport({ role: "Super Admin" }), true);
+  assert.equal(canViewCustomerBusinessSummaryReport({ user_type: "super_admin" }), true);
+  for (const role of ["Admin", "Staff", "Sales", ""]) {
+    assert.equal(canViewCustomerBusinessSummaryReport({ role, is_superuser: true }), false);
+  }
+  assert.equal(canViewCustomerBusinessSummaryReport(null), false);
+});
 
 test("only Admin and Super Admin roles receive full menu access", () => {
   assert.equal(hasFullMenuAccess({ role: "Admin" }), true);

@@ -3,6 +3,18 @@
    Premium CRM Inquiry Form
    ========================================================= */
 
+/* Hide spinner arrows while retaining numeric input validation. */
+.inquiry-page .product-table input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.inquiry-page .product-table input[type="number"]::-webkit-inner-spin-button,
+.inquiry-page .product-table input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 /* =========================================================
    GLOBAL
    ========================================================= */

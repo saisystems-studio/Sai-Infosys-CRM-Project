@@ -219,6 +219,11 @@
     max-width: 100%;
 }
 
+.customer-contact-number {
+    color: #0f172a;
+    font-weight: 700;
+}
+
 .customer-table td:first-child {
     padding-left: 16px;
 }
@@ -249,8 +254,8 @@
     white-space: nowrap;
 }
 
-/* Customer Name */
-.customer-name {
+/* Company name */
+.company-name {
     font-weight: 600;
     color: #0f172a;
     display: flex;
@@ -260,7 +265,7 @@
     overflow-wrap: anywhere;
 }
 
-.customer-name .avatar {
+.company-name .avatar {
     width: 26px;
     height: 26px;
     border-radius: 50%;
@@ -272,6 +277,10 @@
     color: #1e40af;
     font-size: 0.7rem;
     flex-shrink: 0;
+}
+
+.customer-name-secondary {
+    font-weight: 400;
 }
 
 /* Address column - compact */
@@ -391,26 +400,26 @@
 
 /* ---- Action Column - Compact ---- */
 .action-column {
-    width: 110px;
-    min-width: 110px;
+    width: 72px;
+    min-width: 72px;
     text-align: center;
     white-space: nowrap;
 }
 
 .action-buttons {
     display: flex;
-    gap: 6px;
+    gap: 10px;
     justify-content: center;
     align-items: center;
     width: 100%;
 }
 
-.action-btn {
+.customer-action-btn {
     width: 26px;
     height: 26px;
     flex: 0 0 26px;
-    border: none;
-    border-radius: 50%;
+    border: 0;
+    border-radius: 0;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -423,24 +432,24 @@
     position: relative;
 }
 
-.action-btn:hover {
-    background: #f1f5f9;
+.customer-action-btn:hover {
+    background: transparent;
     transform: translateY(-1px);
 }
 
-.action-btn:active {
+.customer-action-btn:active {
     transform: translateY(0);
 }
 
-.view-btn {
+.customer-edit-btn {
+    color: #eab308;
+}
+
+.customer-view-btn {
     color: #2563eb;
 }
 
-.edit-btn {
-    color: #ea580c;
-}
-
-.delete-btn {
+.customer-delete-btn {
     color: #dc2626;
 }
 
@@ -510,7 +519,7 @@
         padding: 2px 8px;
     }
 
-    .customer-name .avatar {
+    .company-name .avatar {
         width: 22px;
         height: 22px;
         font-size: 0.6rem;
@@ -535,7 +544,7 @@
         min-width: 80px;
     }
 
-    .action-btn {
+    .customer-action-btn {
         width: 24px;
         height: 24px;
         font-size: 0.75rem;
@@ -561,7 +570,7 @@
         font-size: 0.65rem;
     }
 
-    .customer-name .avatar {
+    .company-name .avatar {
         width: 18px;
         height: 18px;
         font-size: 0.5rem;
@@ -586,7 +595,7 @@
         min-width: 60px;
     }
 
-    .action-btn {
+    .customer-action-btn {
         width: 20px;
         height: 20px;
         font-size: 0.65rem;

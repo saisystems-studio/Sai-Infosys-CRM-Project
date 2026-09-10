@@ -59,8 +59,48 @@ class CustomerDetailsSerializer(serializers.ModelSerializer):
         contact = obj.contacts.first()
         return contact.contact_number if contact else ""
 
+    def validate_gst_number(self, value):
+        if value is None:
+            return value
+        value = value.strip().upper()
+        if not value:
+            return value
+        if len(value) != 15:
+            raise serializers.ValidationError("GST number must be 15 characters")
+        customers = CustomerDetails.objects.filter(gst_number__iexact=value)
+        if self.instance is not None:
+            customers = customers.exclude(pk=self.instance.pk)
+        if customers.exists():
+            raise serializers.ValidationError("GST number already exists")
+        return value
+
     def validate(self, data):
-        # Add any cross-field validation here
+        errors = {}
+        for field, model, identifier, label in [
+            ("contacts", CustomerContact, "contact_number", "Contact number"),
+            ("licenses", CustomerLicenseDetails, "tally_serial_number", "Tally serial number"),
+        ]:
+            seen = set()
+            row_errors = []
+            for row in data.get(field, []):
+                value = (row.get(identifier) or "").strip()
+                error = {}
+                if value:
+                    row[identifier] = value
+                    normalized = value.casefold()
+                    existing = model.objects.filter(**{f"{identifier}__iexact": value})
+                    if self.instance is not None:
+                        existing = existing.exclude(customer=self.instance)
+                    if normalized in seen:
+                        error[identifier] = [f"{label} is repeated in this customer."]
+                    elif existing.exists():
+                        error[identifier] = [f"{label} already exists."]
+                    seen.add(normalized)
+                row_errors.append(error)
+            if any(row_errors):
+                errors[field] = row_errors
+        if errors:
+            raise serializers.ValidationError(errors)
         return data
 
     @transaction.atomic

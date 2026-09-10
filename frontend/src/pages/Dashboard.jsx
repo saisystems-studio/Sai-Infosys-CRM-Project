@@ -1,9 +1,14 @@
 function loadPageContext() {
-  try { return JSON.parse(sessionStorage.getItem("crm_page_context") || "null") || {}; }
-  catch { return {}; }
+  try {
+    return (
+      JSON.parse(sessionStorage.getItem("crm_page_context") || "null") || {}
+    );
+  } catch {
+    return {};
+  }
 }
 
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import "../styles/Dashboard.css";
 
 import ProductTypeMaster from "./ProductTypeMaster";
@@ -29,6 +34,10 @@ import PaymentApproval from "./PaymentApproval";
 import PaymentReceivedDetails from "./PaymentReceivedDetails";
 import PaymentPending from "./PaymentPending";
 import CompletedInquiryReport from "./CompletedInquiryReport/CompletedInquiryReport.jsx";
+import StaffPerformanceReport from "./StaffPerformanceReport";
+const CustomerBusinessSummaryReport = lazy(
+  () => import("./CustomerBusinessSummary/CustomerBusinessSummaryReport"),
+);
 import {
   canViewPaymentApproval,
   canViewPaymentPending,
@@ -38,6 +47,8 @@ import TaskReminder from "../TaskReminder";
 import { createStaffMode, editStaffMode } from "./Staff/staffNavigation";
 import {
   buildMenuAccess,
+  canViewCustomerBusinessSummaryReport,
+  canViewStaffPerformanceReport,
   hasFullMenuAccess,
   loadActiveMenu,
   saveActiveMenu,
@@ -216,10 +227,15 @@ function Dashboard() {
   const [greeting, setGreeting] = useState("");
   const [greetingEmoji, setGreetingEmoji] = useState("");
   const [staffId, setStaffId] = useState(null);
-  const [selectedStaff, setSelectedStaff] = useState(() => loadPageContext().selectedStaff || null);
-  const [selectedInquiry, setSelectedInquiry] = useState(() => loadPageContext().selectedInquiry || null);
-  const [selectedScheduleInquiryId, setSelectedScheduleInquiryId] =
-    useState(() => loadPageContext().selectedScheduleInquiryId || null);
+  const [selectedStaff, setSelectedStaff] = useState(
+    () => loadPageContext().selectedStaff || null,
+  );
+  const [selectedInquiry, setSelectedInquiry] = useState(
+    () => loadPageContext().selectedInquiry || null,
+  );
+  const [selectedScheduleInquiryId, setSelectedScheduleInquiryId] = useState(
+    () => loadPageContext().selectedScheduleInquiryId || null,
+  );
   const [autoStartScheduleTask, setAutoStartScheduleTask] = useState(false);
   const [isLoadingMenus, setIsLoadingMenus] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -258,6 +274,8 @@ function Dashboard() {
     "Schedule",
     "Schedule Detail",
     "Completed Inquery Report",
+    "Customer Business Summary Report",
+    "Staff Performance Report",
     "Completed Inquiry Detail",
     "Payment Approval",
     "Payment Pending",
@@ -275,8 +293,17 @@ function Dashboard() {
   useEffect(() => {
     saveActiveMenu(active, sessionStorage);
     try {
-      sessionStorage.setItem("crm_page_context", JSON.stringify({ selectedStaff, selectedInquiry, selectedScheduleInquiryId }));
-    } catch { /* Navigation works without browser storage. */ }
+      sessionStorage.setItem(
+        "crm_page_context",
+        JSON.stringify({
+          selectedStaff,
+          selectedInquiry,
+          selectedScheduleInquiryId,
+        }),
+      );
+    } catch {
+      /* Navigation works without browser storage. */
+    }
   }, [active, selectedStaff, selectedInquiry, selectedScheduleInquiryId]);
 
   /* =======================================================
@@ -372,13 +399,10 @@ function Dashboard() {
 
         // Step 1: Fetch all active menus
         console.log("📡 Fetching all active menus...");
-        const menuResponse = await fetch(
-          "/crm/api/staff/my-menus/",
-          {
-            method: "GET",
-            headers,
-          },
-        );
+        const menuResponse = await fetch("/crm/api/staff/my-menus/", {
+          method: "GET",
+          headers,
+        });
 
         if (!menuResponse.ok) {
           throw new Error(`Menu API Error: ${menuResponse.status}`);
@@ -402,13 +426,23 @@ function Dashboard() {
         const activeMenus = allMenus
           .filter((menu) => menu.Is_Active === true)
           .filter((menu) => {
+            if (menu.Menu_Name === "Customer Business Summary Report") {
+              return canViewCustomerBusinessSummaryReport(loggedInUser);
+            }
+            if (menu.Menu_Name === "Staff Performance Report") {
+              return canViewStaffPerformanceReport(loggedInUser);
+            }
             const isPaymentApproval = menu.Menu_Name === "Payment Approval";
             const isPaymentPending = menu.Menu_Name === "Payment Pending";
             const isPaymentReceivedReport = isPaymentReceivedReportMenu(
               menu.Menu_Name,
             );
 
-            if (!isPaymentApproval && !isPaymentPending && !isPaymentReceivedReport) {
+            if (
+              !isPaymentApproval &&
+              !isPaymentPending &&
+              !isPaymentReceivedReport
+            ) {
               return true;
             }
 
@@ -531,7 +565,13 @@ function Dashboard() {
         setMenus(filteredMenus);
         setAllowedMenuIds(finalAllowedIds);
         setMenuAccess(buildMenuAccess(filteredMenus));
-        setActive((current) => selectInitialMenu(filteredMenus, current, Boolean(selectedScheduleInquiryId)));
+        setActive((current) =>
+          selectInitialMenu(
+            filteredMenus,
+            current,
+            Boolean(selectedScheduleInquiryId),
+          ),
+        );
 
         // Step 6: All menus are closed by default
         setOpenMenus({});
@@ -617,9 +657,7 @@ function Dashboard() {
     }
 
     return [
-      ...menus.filter(
-        (menu) => !isPaymentReceivedReportMenu(menu.Menu_Name),
-      ),
+      ...menus.filter((menu) => !isPaymentReceivedReportMenu(menu.Menu_Name)),
       {
         Id: "reports-root",
         Menu_Name: "Reports",
@@ -717,10 +755,6 @@ function Dashboard() {
     }
 
     setActive(menuName);
-  };
-
-  const handleViewInquiry = (inquiry) => {
-    return inquiry;
   };
 
   const handleEditInquiry = (inquiry) => {
@@ -843,26 +877,6 @@ function Dashboard() {
             })
           )}
         </nav>
-
-        <div className="sidebar-bottom">
-          <div className="help-card">
-            <span>✨</span>
-            <strong>Need a hand?</strong>
-            <p>Explore our help center and guides.</p>
-            <a href="#help">Visit help center</a>
-          </div>
-
-          <div className="side-user">
-            <span>{getUserInitials()}</span>
-            <div>
-              <strong>{getUserName()}</strong>
-              <small>{getUserRole()}</small>
-            </div>
-            <button aria-label="More options">
-              <Icon name="more" />
-            </button>
-          </div>
-        </div>
       </aside>
 
       {sidebarOpen && (
@@ -938,7 +952,6 @@ function Dashboard() {
           ) : active === "Inquiry List" ? (
             <InquiryList
               onAddInquiry={handleAddInquiry}
-              onViewInquiry={handleViewInquiry}
               onEditInquiry={handleEditInquiry}
               permissions={menuAccess["Inquiry List"]}
             />
@@ -988,6 +1001,20 @@ function Dashboard() {
             <CompletedInquiryReport
               onViewDetails={handleViewCompletedInquiry}
             />
+          ) : active === "Customer Business Summary Report" ? (
+            canViewCustomerBusinessSummaryReport(user) ? (
+              <Suspense fallback={<p>Loading customer report...</p>}>
+                <CustomerBusinessSummaryReport />
+              </Suspense>
+            ) : (
+              <p>You do not have permission to view this report.</p>
+            )
+          ) : active === "Staff Performance Report" ? (
+            canViewStaffPerformanceReport(user) ? (
+              <StaffPerformanceReport />
+            ) : (
+              <p>You do not have permission to view this report.</p>
+            )
           ) : active === "Completed Inquiry Detail" ? (
             <ScheduleDetail
               inquiryId={selectedScheduleInquiryId}
@@ -1149,7 +1176,12 @@ function Dashboard() {
                           {inquiry.schedule_date || "No date"}
                         </span>
                         <div className="dashboard-inquiry-main">
-                          <strong>{inquiry.customer_name || "Unknown customer"}</strong>
+                          <strong>
+                            {inquiry.company_name || "Unknown company"}
+                          </strong>
+                          <small className="dashboard-inquiry-customer">
+                            {inquiry.customer_name || "Unknown customer"}
+                          </small>
                           <small>
                             {isAdmin
                               ? `Assigned to ${inquiry.resource_name || "Unassigned"}`
@@ -1160,19 +1192,28 @@ function Dashboard() {
                               {inquiry.products.map((product) => (
                                 <div
                                   className="dashboard-inquiry-product"
-                                  key={product.id || `${product.product_name}-${product.requirement}`}
+                                  key={
+                                    product.id ||
+                                    `${product.product_name}-${product.requirement}`
+                                  }
                                 >
                                   <span className="dashboard-inquiry-product-name">
-                                    {product.product_name || product.product_type_name || "Product"}
+                                    {product.product_name ||
+                                      product.product_type_name ||
+                                      "Product"}
                                   </span>
                                   <span>
                                     Qty {product.qty ?? product.quantity ?? 0}
                                   </span>
-                                  {product.amount !== null && product.amount !== undefined && (
-                                    <span>
-                                      ₹{Number(product.amount).toLocaleString("en-IN")}
-                                    </span>
-                                  )}
+                                  {product.amount !== null &&
+                                    product.amount !== undefined && (
+                                      <span>
+                                        ₹
+                                        {Number(product.amount).toLocaleString(
+                                          "en-IN",
+                                        )}
+                                      </span>
+                                    )}
                                   {product.requirement && (
                                     <span className="dashboard-inquiry-requirement">
                                       {product.requirement}
@@ -1188,7 +1229,9 @@ function Dashboard() {
                           )}
                         </div>
                         <span className="dashboard-inquiry-status">
-                          {inquiry.is_not_started ? "Not started" : inquiry.status_name || "In progress"}
+                          {inquiry.is_not_started
+                            ? "Not started"
+                            : inquiry.status_name || "In progress"}
                         </span>
                         <span className="dashboard-inquiry-arrow">›</span>
                       </button>
@@ -1200,7 +1243,6 @@ function Dashboard() {
                   </div>
                 )}
               </section>
-
             </>
           )}
         </div>

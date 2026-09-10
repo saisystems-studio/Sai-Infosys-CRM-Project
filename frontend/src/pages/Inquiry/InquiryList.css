@@ -371,6 +371,15 @@
   opacity: 1;
 }
 
+.inquiry-card-editable {
+  cursor: pointer;
+}
+
+.inquiry-card-editable:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
 .card-header {
   display: flex;
   align-items: flex-start;
@@ -448,6 +457,11 @@
 .contact svg {
   flex: 0 0 auto;
   color: #8792a7;
+}
+
+.contact .inquiry-phone {
+  color: #334155;
+  font-weight: 700;
 }
 
 .badges {
@@ -598,38 +612,6 @@
   color: #6366f1;
 }
 
-.products-header .count {
-  margin-left: auto;
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  color: #4338ca;
-  background: #e0e7ff;
-  font-size: 9px;
-}
-
-.products-estimate {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  padding-left: 7px;
-  border-left: 1px solid #dfe4ec;
-  white-space: nowrap;
-}
-
-.products-estimate small {
-  color: #8a94a7;
-  font-size: 8px;
-  font-weight: 650;
-}
-
-.products-estimate strong {
-  color: #047857;
-  font-size: 10px;
-}
-
 .product-list {
   padding: 2px 8px;
 }
@@ -730,18 +712,6 @@
   background: #fff;
   cursor: pointer;
   transition: all 150ms ease;
-}
-
-.action.view:hover {
-  border-color: #93c5fd;
-  color: #2563eb;
-  background: #eff6ff;
-}
-
-.action.edit:hover {
-  border-color: #c4b5fd;
-  color: #7c3aed;
-  background: #f5f3ff;
 }
 
 .action.delete:hover {
@@ -1164,4 +1134,129 @@
   .detail-summary-grid div {
     border-right: 0;
   }
+}
+
+/* =========================================================
+   TYPEABLE INPUT WITH DATALIST (No Arrow)
+   ========================================================= */
+
+/* Wrapper for product input */
+.product-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Style the input to look like a text box with no arrow */
+.product-typeable-input {
+  width: 100% !important;
+  height: 38px !important;
+  padding: 0 13px !important;
+  border: 1px solid #dce3ec !important;
+  border-radius: 8px !important;
+  outline: none !important;
+  color: var(--text-strong) !important;
+  background: #ffffff !important;
+  font-size: 12px !important;
+  font-family: inherit !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
+  /* Remove the dropdown arrow completely */
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+/* Remove the arrow for Chrome/Safari/Edge */
+.product-typeable-input::-webkit-calendar-picker-indicator {
+  opacity: 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: none !important;
+  background: none !important;
+}
+
+/* Remove the arrow for Firefox */
+.product-typeable-input::-moz-calendar-picker-indicator {
+  opacity: 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+/* Remove the arrow for IE/Edge */
+.product-typeable-input::-ms-clear,
+.product-typeable-input::-ms-reveal {
+  display: none !important;
+}
+
+/* Hover state */
+.product-typeable-input:hover {
+  border-color: #cbd5e1 !important;
+}
+
+/* Focus state */
+.product-typeable-input:focus {
+  border-color: var(--brand-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09) !important;
+  background: #ffffff !important;
+}
+
+/* Placeholder */
+.product-typeable-input::placeholder {
+  color: #a0aec0 !important;
+}
+
+/* Disabled state */
+.product-typeable-input:disabled {
+  color: #94a3b8 !important;
+  background: #f1f5f9 !important;
+  cursor: not-allowed !important;
+}
+
+/* Datalist styling - hidden by default */
+.product-row datalist {
+  display: none;
+}
+
+/* Status display */
+.status-display {
+  width: 100%;
+  height: 42px;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #dce3ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Override any conflicting styles */
+.product-row input[list] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+/* Hide product suggestion arrows without hiding date pickers. */
+.product-row input[list]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: none !important;
+}
+
+.product-row input[list]::-moz-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+input::-ms-clear,
+input::-ms-reveal {
+  display: none !important;
 }

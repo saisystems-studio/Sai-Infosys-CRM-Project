@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   filterCompletedInquiryReport,
+  getCompletedReportDateRange,
   getCompletedTaskSummary,
 } from "./completedInquiryReport.js";
 
@@ -54,5 +55,18 @@ test("task summary identifies who did what and totals completed duration", () =>
     totalSeconds: 5400,
     latestWorker: "Anita Rao",
     latestNotes: "Configured backups",
+  });
+});
+
+test("report date presets create inclusive task completion periods", () => {
+  const today = new Date("2026-09-10T10:00:00");
+  assert.deepEqual(getCompletedReportDateRange("today", today), {
+    fromDate: "2026-09-10", toDate: "2026-09-10",
+  });
+  assert.deepEqual(getCompletedReportDateRange("today-yesterday", today), {
+    fromDate: "2026-09-09", toDate: "2026-09-10",
+  });
+  assert.deepEqual(getCompletedReportDateRange("last-7-days", today), {
+    fromDate: "2026-09-04", toDate: "2026-09-10",
   });
 });

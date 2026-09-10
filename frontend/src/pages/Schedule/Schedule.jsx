@@ -672,7 +672,7 @@ const Schedule = ({ onViewDetails }) => {
                             </h4>
                             <div className="schedule-contact">
                               {inquiry.phone_number && (
-                                <span className="schedule-contact-item">
+                                <span className="schedule-contact-item schedule-phone-number">
                                   <svg
                                     viewBox="0 0 24 24"
                                     width="13"

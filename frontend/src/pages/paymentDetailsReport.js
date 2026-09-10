@@ -20,7 +20,7 @@ export function getPaymentCardSummary(payment = {}) {
   return {
     product: getPaymentProduct(payment),
     company: getPaymentCompany(payment),
-    paidAmount: Number(payment.amount || 0),
+    paidAmount: Number(payment.payment_amount || payment.amount || 0),
     revenueAmount: Number(payment.revenue_amount || 0),
   };
 }

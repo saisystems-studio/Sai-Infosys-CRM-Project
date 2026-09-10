@@ -59,8 +59,8 @@ function App() {
         axios.defaults.headers.common.Authorization = `Bearer ${access}`;
         localStorage.setItem("crm_user", JSON.stringify(user));
         if (window.location.pathname === "/crm/login") {
-      window.history.replaceState(window.history.state, "", "/");
-    }
+          window.history.replaceState(window.history.state, "", "/crm/");
+        }
         setStatus("authenticated");
       } catch {
         // Do not allow protected pages to render when the session cannot be checked.
@@ -77,8 +77,8 @@ function App() {
       axios.defaults.headers.common.Authorization = `Bearer ${access}`;
       localStorage.setItem("crm_user", JSON.stringify(user));
       if (window.location.pathname === "/crm/login") {
-      window.history.replaceState(window.history.state, "", "/");
-    }
+        window.history.replaceState(window.history.state, "", "/crm/");
+      }
       setStatus("authenticated");
     };
 
@@ -123,7 +123,7 @@ function App() {
     axios.defaults.headers.common.Authorization = `Bearer ${access}`;
 
     if (window.location.pathname === "/crm/login") {
-      window.history.replaceState(window.history.state, "", "/");
+      window.history.replaceState(window.history.state, "", "/crm/");
     }
     setStatus("authenticated");
   };

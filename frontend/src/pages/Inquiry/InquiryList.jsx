@@ -287,7 +287,6 @@ const getStatusClass = (status) => {
 function InquiryCard({
   inquiry,
   sources,
-  onView,
   onEdit,
   onDelete,
   permissions,
@@ -306,8 +305,26 @@ function InquiryCard({
   const products = getProducts(inquiry);
   const total = getTotal(inquiry);
 
+  const canOpenForEdit = Boolean(permissions.edit);
+  const openForEdit = () => {
+    if (canOpenForEdit) onEdit(inquiry);
+  };
+  const handleCardKeyDown = (event) => {
+    if (canOpenForEdit && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      openForEdit();
+    }
+  };
+
   return (
-    <article className="inquiry-card">
+    <article
+      className={`inquiry-card${canOpenForEdit ? " inquiry-card-editable" : ""}`}
+      onClick={openForEdit}
+      onKeyDown={handleCardKeyDown}
+      role={canOpenForEdit ? "button" : undefined}
+      tabIndex={canOpenForEdit ? 0 : undefined}
+      aria-label={canOpenForEdit ? `Edit inquiry for ${customerName}` : undefined}
+    >
       <div className="card-header">
         <div className="customer-info">
           <div className="avatar" aria-hidden="true">
@@ -324,7 +341,7 @@ function InquiryCard({
                 </span>
               )}
               {phone && (
-                <span>
+                <span className="inquiry-phone">
                   <Icon name="phone" size={10} />
                   {phone}
                 </span>
@@ -374,11 +391,6 @@ function InquiryCard({
         <div className="products-header">
           <Icon name="box" size={10} />
           <span>Products & Requirements</span>
-          <span className="count">{products.length}</span>
-          <span className="products-estimate">
-            <small>Est.</small>
-            <strong>{formatCurrency(total)}</strong>
-          </span>
         </div>
 
         {products.length > 0 ? (
@@ -421,28 +433,13 @@ function InquiryCard({
           <span>#{inquiryId || "—"}</span>
         </div>
         <div className="actions">
-          {permissions.view && (
-            <button
-              className="action view"
-              onClick={() => onView(inquiry)}
-              title="View"
-            >
-              <Icon name="eye" size={12} />
-            </button>
-          )}
-          {permissions.edit && (
-            <button
-              className="action edit"
-              onClick={() => onEdit(inquiry)}
-              title="Edit"
-            >
-              <Icon name="edit" size={12} />
-            </button>
-          )}
           {permissions.delete && (
             <button
               className="action delete"
-              onClick={() => onDelete(inquiry)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(inquiry);
+              }}
               title="Delete"
             >
               <Icon name="trash" size={12} />
@@ -454,7 +451,7 @@ function InquiryCard({
   );
 }
 
-function InquiryDetailsModal({ inquiry, sources, onClose, onEdit, canEdit }) {
+export function InquiryDetailsModal({ inquiry, sources, onClose, onEdit, canEdit }) {
   const products = getProducts(inquiry);
 
   useEffect(() => {
@@ -594,7 +591,6 @@ function InquiryDetailsModal({ inquiry, sources, onClose, onEdit, canEdit }) {
 
 function InquiryList({
   onAddInquiry,
-  onViewInquiry,
   onEditInquiry,
   permissions = {},
 }) {
@@ -609,7 +605,6 @@ function InquiryList({
   const [productFilter, setProductFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [viewInquiry, setViewInquiry] = useState(null);
 
   /* =======================================================
      TOKEN MANAGEMENT - FIXED
@@ -968,13 +963,6 @@ function InquiryList({
     }
   };
 
-  const handleView = (inquiry) => {
-    setViewInquiry(inquiry);
-    if (onViewInquiry) {
-      onViewInquiry(inquiry);
-    }
-  };
-
   const handleEdit = (inquiry) => {
     if (onEditInquiry) {
       onEditInquiry(inquiry);
@@ -1186,25 +1174,12 @@ function InquiryList({
               key={getId(inquiry)}
               inquiry={inquiry}
               sources={sources}
-              onView={handleView}
               onEdit={handleEdit}
               onDelete={handleDelete}
               permissions={permissions}
             />
           ))}
         </div>
-      )}
-      {viewInquiry && (
-        <InquiryDetailsModal
-          inquiry={viewInquiry}
-          sources={sources}
-          onClose={() => setViewInquiry(null)}
-          onEdit={(inquiry) => {
-            setViewInquiry(null);
-            handleEdit(inquiry);
-          }}
-          canEdit={permissions.edit}
-        />
       )}
     </div>
   );

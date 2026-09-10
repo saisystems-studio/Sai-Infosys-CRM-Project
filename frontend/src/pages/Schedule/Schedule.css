@@ -522,6 +522,11 @@
   flex-shrink: 0;
 }
 
+.schedule-phone-number {
+  color: #334155;
+  font-weight: 700;
+}
+
 .schedule-reschedule-notice {
   display: flex;
   flex: 0 0 auto;

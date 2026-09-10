@@ -719,21 +719,6 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
     }
 
     /* =======================================================
-       RATE VALIDATION
-       ======================================================= */
-
-    if (
-      items.some(
-        (item) =>
-          item.rate === "" || item.rate === null || item.rate === undefined,
-      )
-    ) {
-      setMessage("Please enter rate for every product.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    /* =======================================================
        SELECTED MASTER OBJECTS
        ======================================================= */
 
@@ -1071,7 +1056,7 @@ function InquiryPage({ onCancel, editData = null, isEdit = false }) {
 
               <span>QTY</span>
 
-              <span>RATE *</span>
+              <span>RATE</span>
 
               <span>AMOUNT</span>
 

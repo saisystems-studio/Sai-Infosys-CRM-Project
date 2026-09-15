@@ -17,6 +17,21 @@ class ProductTypeMaster(models.Model):
         db_column="Product_Type_Name"
     )
 
+    gst_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        db_column="GST_Percentage",
+    )
+
+    hsn_code = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        db_column="HSN_Code",
+    )
+
     created_on = models.DateTimeField(
         auto_now_add=True,
         db_column="Created_On"

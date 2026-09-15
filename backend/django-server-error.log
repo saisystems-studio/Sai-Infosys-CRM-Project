@@ -1,0 +1,54 @@
+D:\PythonProjects\SaiinfosysCRM\backend\venv\Lib\site-packages\rest_framework\fields.py:1009: UserWarning: min_value should be an integer or Decimal instance.
+  warnings.warn("min_value should be an integer or Decimal instance.")
+[11/Sep/2026 19:03:29] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:04:23] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:04:23] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:04:23] "GET /api/staff/my-menus/ HTTP/1.1" 200 4579
+[11/Sep/2026 19:04:23] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:04:23] "GET /api/staff/my-menus/ HTTP/1.1" 200 4579
+[11/Sep/2026 19:04:23] "GET /api/staff/my-menus/ HTTP/1.1" 200 4579
+[11/Sep/2026 19:04:23] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:04:23] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:04:23] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:04:38] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:04:42] "GET /api/product-types/ HTTP/1.1" 200 286
+[11/Sep/2026 19:04:42] "GET /api/product-types/ HTTP/1.1" 200 286
+[11/Sep/2026 19:04:51] "GET /api/staff-daily-task-report/?from_date=2026-09-11&to_date=2026-09-11 HTTP/1.1" 200 318
+[11/Sep/2026 19:04:51] "GET /api/staff-daily-task-report/?from_date=2026-09-11&to_date=2026-09-11 HTTP/1.1" 200 318
+[11/Sep/2026 19:04:53] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:05:08] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:05:09] "GET /api/staff-daily-task-report/?from_date=2026-09-10&to_date=2026-09-10 HTTP/1.1" 200 1722
+[11/Sep/2026 19:05:13] "GET /api/product-types/ HTTP/1.1" 200 286
+[11/Sep/2026 19:05:13] "GET /api/product-types/ HTTP/1.1" 200 286
+Not Found: /api/product-billing/customer-lookup/
+[11/Sep/2026 19:05:21] "GET /api/product-billing/customer-lookup/?contact_number=0763944442 HTTP/1.1" 404 56
+[11/Sep/2026 19:05:23] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:05:27] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:05:28] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:05:29] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:05:31] "POST /api/auth/login/ HTTP/1.1" 200 638
+[11/Sep/2026 19:05:31] "GET /api/staff/my-menus/ HTTP/1.1" 200 4579
+[11/Sep/2026 19:05:31] "GET /api/product-types/ HTTP/1.1" 200 286
+[11/Sep/2026 19:05:31] "GET /api/staff/my-menus/ HTTP/1.1" 200 4579
+[11/Sep/2026 19:05:31] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:05:31] "GET /api/product-types/ HTTP/1.1" 200 286
+[11/Sep/2026 19:05:31] "GET /api/staff/my-menus/ HTTP/1.1" 200 4579
+[11/Sep/2026 19:05:32] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:05:32] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:05:32] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:05:33] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:05:33] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+Not Found: /api/product-billing/customer-lookup/
+[11/Sep/2026 19:05:35] "GET /api/product-billing/customer-lookup/?contact_number=0763944442 HTTP/1.1" 404 56
+[11/Sep/2026 19:05:39] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:05:39] "GET /api/auth/me/ HTTP/1.1" 200 141
+[11/Sep/2026 19:05:39] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:05:39] "GET /api/dashboard-stats/?date=2026-09-11 HTTP/1.1" 200 187
+[11/Sep/2026 19:05:47] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:06:02] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:06:18] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:06:32] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:06:47] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:07:02] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:07:17] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759
+[11/Sep/2026 19:08:18] "GET /api/inquiries/schedule/ HTTP/1.1" 200 13759

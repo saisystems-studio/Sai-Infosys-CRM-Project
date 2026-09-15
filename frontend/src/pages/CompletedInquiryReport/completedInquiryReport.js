@@ -28,6 +28,12 @@ export function getCompletedReportDateRange(preset, today = new Date()) {
   } else if (preset === "next-month") {
     from.setMonth(from.getMonth() + 1, 1);
     to.setMonth(to.getMonth() + 2, 0);
+  } else if (preset === "this-month") {
+    from.setDate(1);
+    to.setMonth(to.getMonth() + 1, 0);
+  } else if (preset === "last-month") {
+    from.setMonth(from.getMonth() - 1, 1);
+    to.setMonth(to.getMonth(), 0);
   } else if (preset === "custom") {
     return { fromDate: "", toDate: "" };
   }
@@ -37,6 +43,24 @@ export function getCompletedReportDateRange(preset, today = new Date()) {
 
 export function getCompletedTaskDate(task = {}) {
   return String(task.work_date || task.end_time || "").slice(0, 10);
+}
+
+export function getLatestCompletedTask(tasks = [], filters = {}) {
+  return (
+    tasks
+      .filter((task) => {
+        const taskDate = getCompletedTaskDate(task);
+        return (
+          task.end_time &&
+          (!filters.fromDate || taskDate >= filters.fromDate) &&
+          (!filters.toDate || taskDate <= filters.toDate)
+        );
+      })
+      .sort(
+        (first, second) =>
+          new Date(second.end_time).getTime() - new Date(first.end_time).getTime(),
+      )[0] || null
+  );
 }
 
 export function filterCompletedInquiryReport(rows = [], filters = {}) {
@@ -50,6 +74,7 @@ export function filterCompletedInquiryReport(rows = [], filters = {}) {
     });
     const searchable = [
       row.customer_name,
+      row.company_name,
       row.phone_number,
       row.email_id,
       row.resource_name,

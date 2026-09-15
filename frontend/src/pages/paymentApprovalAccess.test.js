@@ -18,9 +18,9 @@ test("Super Admin users can mark pending payments as received", () => {
   assert.equal(canViewPaymentApproval({ role: "Super Admin" }), true);
 });
 
-test("only Admin users can record a payment from Payment Pending", () => {
+test("Admin and Super Admin users can record a payment from Payment Pending", () => {
   assert.equal(canRecordPayment({ role: "Admin" }), true);
-  assert.equal(canRecordPayment({ role: "Super Admin" }), false);
+  assert.equal(canRecordPayment({ role: "Super Admin" }), true);
 });
 
 test("Admin and Super Admin users can view Payment Pending", () => {

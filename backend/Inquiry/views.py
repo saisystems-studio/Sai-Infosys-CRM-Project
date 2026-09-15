@@ -2,7 +2,7 @@ from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
-from django.db.models import BooleanField, Case, CharField, DateTimeField, DecimalField, ExpressionWrapper, F, OuterRef, Subquery, Sum, Value, When
+from django.db.models import BooleanField, Case, CharField, DateTimeField, DecimalField, ExpressionWrapper, F, OuterRef, Q, Subquery, Sum, Value, When
 from django.db.models.functions import Coalesce
 from rest_framework.response import Response
 
@@ -115,9 +115,9 @@ class InquiryViewSet(
     def _require_admin(self, request):
         staff = get_staff(request.user)
         role = str(getattr(staff, "Role", "") or "").strip().lower()
-        if role != "admin":
+        if role not in {"admin", "super admin"}:
             raise PermissionDenied(
-                "Only Admin can access received payment details."
+                "Only Admin and Super Admin can record payments."
             )
 
     def _payment_summary_records(self, only_recorded=False):
@@ -333,6 +333,13 @@ class InquiryViewSet(
         )
         return Response(PaymentPendingListSerializer(records, many=True).data)
 
+    @action(detail=False, methods=["get"], url_path="product-billing")
+    def product_billing(self, request):
+        """Invoice and collection position for every billable product."""
+        self._require_payment_approval_viewer(request)
+        records = self._payment_summary_records().order_by("-Created_On", "-id")
+        return Response(PaymentPendingListSerializer(records, many=True).data)
+
     @action(
         detail=False,
         methods=["post"],
@@ -432,8 +439,11 @@ class InquiryViewSet(
     )
     def completed_inquiry_report(self, request):
         staff = get_staff(request.user)
+        # Payment Pending is a terminal task outcome too: the assigned staff
+        # member has completed their work even though payment is still due.
         inquiries = self.get_queryset().filter(
-            Status_Id__status_type_name__iexact="Completed"
+            Q(Status_Id__status_type_name__iexact="Completed")
+            | Q(Status_Id__status_type_name__iexact="Payment Pending")
         )
         if not has_full_access(request.user, staff):
             if staff is None:

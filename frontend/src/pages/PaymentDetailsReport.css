@@ -130,15 +130,14 @@
 }
 
 .payment-details-table {
-    min-width: 1140px;
-    width: max-content;
-    /* table is exactly as wide as its columns need, not forced to 100% */
+    min-width: 990px;
+    width: 100%;
 }
 
 .payment-details-table-head,
 .payment-details-table-row {
     display: grid;
-    grid-template-columns: 75px minmax(125px, 1fr) minmax(145px, 1.1fr) minmax(120px, .9fr) minmax(95px, .75fr) minmax(110px, .8fr) minmax(100px, .75fr) minmax(110px, .85fr) minmax(100px, .75fr) 95px;
+    grid-template-columns: minmax(190px, 1.35fr) 130px minmax(95px, .75fr) 120px 105px 135px 110px 95px;
 }
 
 .payment-details-table-head {
@@ -176,9 +175,9 @@
     overflow-wrap: anywhere;
 }
 
-.payment-details-table-head>span:nth-child(6),
+.payment-details-table-head>span:nth-child(4),
+.payment-details-table-head>span:nth-child(5),
 .payment-details-table-head>span:nth-child(7),
-.payment-details-table-head>span:nth-child(9),
 .payment-details-paid,
 .payment-details-revenue,
 .payment-details-remaining {
@@ -207,4 +206,18 @@
     font-size: 10px;
     font-weight: 800;
     white-space: nowrap
+}
+
+.payment-details-company {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.payment-details-table .payment-details-company {
+    margin: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow-wrap: break-word;
+    word-break: normal;
 }

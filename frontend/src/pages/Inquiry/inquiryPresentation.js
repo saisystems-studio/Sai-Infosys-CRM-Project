@@ -5,6 +5,80 @@ export function getCustomerInitials(name = "") {
   return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
 }
 
+export function getInquiryDisplayName(item) {
+  return (
+    item?.company_name ||
+    item?.customer?.company_name ||
+    item?.customer_name ||
+    item?.customer?.customer_name ||
+    item?.customer?.name ||
+    "Unknown Customer"
+  );
+}
+
+export function getInquiryCreatedDate(item) {
+  return (
+    item?.created_at ||
+    item?.created_date ||
+    item?.date ||
+    item?.inquiry_date ||
+    ""
+  );
+}
+
+function asLocalDate(value) {
+  const stringValue = String(value || "");
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(stringValue)
+    ? new Date(`${stringValue}T00:00:00`)
+    : new Date(stringValue);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function endOfDay(date) {
+  const result = startOfDay(date);
+  result.setDate(result.getDate() + 1);
+  result.setMilliseconds(-1);
+  return result;
+}
+
+export function filterInquiriesByCreatedPeriod(inquiries, period, now = new Date()) {
+  if (!period) return inquiries;
+
+  const today = startOfDay(now);
+  let start = today;
+  let end = endOfDay(now);
+
+  if (period === "yesterday") {
+    start = new Date(today);
+    start.setDate(start.getDate() - 1);
+    end = endOfDay(start);
+  } else if (period === "yesterday-and-today") {
+    start = new Date(today);
+    start.setDate(start.getDate() - 1);
+  } else if (period === "last-7-days") {
+    start = new Date(today);
+    start.setDate(start.getDate() - 6);
+  } else if (period === "this-month") {
+    start = new Date(today.getFullYear(), today.getMonth(), 1);
+    end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (period === "last-month") {
+    start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+  } else if (period === "next-month") {
+    start = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    end = new Date(today.getFullYear(), today.getMonth() + 2, 0, 23, 59, 59, 999);
+  }
+
+  return inquiries.filter((inquiry) => {
+    const createdDate = asLocalDate(getInquiryCreatedDate(inquiry));
+    return createdDate && createdDate >= start && createdDate <= end;
+  });
+}
+
 export function getStatusTone(status = "") {
   const value = String(status).toLowerCase();
   if (value.includes("progress")) return "progress";

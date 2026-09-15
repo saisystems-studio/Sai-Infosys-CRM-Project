@@ -5,6 +5,7 @@ import {
   getPaymentCompany,
   getPaymentProduct,
 } from "./paymentDetailsReport";
+import { getCompletedReportDateRange } from "./CompletedInquiryReport/completedInquiryReport";
 import "./CompletedInquiryReport/CompletedInquiryReport.css";
 import "./PaymentDetailsReport.css";
 
@@ -33,8 +34,17 @@ const formatDate = (value) =>
 export default function PaymentReceivedDetails() {
   const [payments, setPayments] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
+  const [datePreset, setDatePreset] = useState("custom");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const selectDatePreset = (preset) => {
+    setDatePreset(preset);
+    setFilters((current) => ({
+      ...current,
+      ...getCompletedReportDateRange(preset),
+    }));
+  };
 
   const loadPayments = async () => {
     setLoading(true);
@@ -140,6 +150,22 @@ export default function PaymentReceivedDetails() {
           />
         </label>
         <label>
+          <span>Period</span>
+          <select
+            value={datePreset}
+            onChange={(event) => selectDatePreset(event.target.value)}
+          >
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="today-yesterday">Yesterday &amp; Today</option>
+            <option value="last-7-days">Last 7 days</option>
+            <option value="next-month">Next month</option>
+            <option value="this-month">This month</option>
+            <option value="last-month">Last month</option>
+            <option value="custom">Mention period</option>
+          </select>
+        </label>
+        <label>
           <span>Product</span>
           <select
             value={filters.product}
@@ -167,28 +193,38 @@ export default function PaymentReceivedDetails() {
             ))}
           </select>
         </label>
-        <label>
-          <span>From</span>
-          <input
-            type="date"
-            value={filters.fromDate}
-            onChange={(event) =>
-              setFilters({ ...filters, fromDate: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          <span>To</span>
-          <input
-            type="date"
-            value={filters.toDate}
-            onChange={(event) =>
-              setFilters({ ...filters, toDate: event.target.value })
-            }
-          />
-        </label>
+        {datePreset === "custom" && (
+          <>
+            <label>
+              <span>From date</span>
+              <input
+                type="date"
+                value={filters.fromDate}
+                onChange={(event) =>
+                  setFilters({ ...filters, fromDate: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              <span>To date</span>
+              <input
+                type="date"
+                value={filters.toDate}
+                onChange={(event) =>
+                  setFilters({ ...filters, toDate: event.target.value })
+                }
+              />
+            </label>
+          </>
+        )}
         {Object.values(filters).some(Boolean) && (
-          <button type="button" onClick={() => setFilters(emptyFilters)}>
+          <button
+            type="button"
+            onClick={() => {
+              setDatePreset("custom");
+              setFilters(emptyFilters);
+            }}
+          >
             Clear
           </button>
         )}
@@ -250,8 +286,6 @@ export default function PaymentReceivedDetails() {
                 aria-label="Received payment details"
               >
                 <div className="payment-details-table-head" role="row">
-                  <span role="columnheader">Payment</span>
-                  <span role="columnheader">Customer</span>
                   <span role="columnheader">Company</span>
                   <span role="columnheader">Payment date</span>
                   <span role="columnheader">Product</span>
@@ -271,17 +305,11 @@ export default function PaymentReceivedDetails() {
                       role="row"
                       key={payment.id}
                     >
-                      <span role="cell" data-label="Payment">
-                        #{payment.id}
-                      </span>
                       <span
                         role="cell"
-                        data-label="Customer"
-                        className="payment-details-customer"
+                        data-label="Company"
+                        className="payment-details-company"
                       >
-                        {payment.customer_name || "Unknown customer"}
-                      </span>
-                      <span role="cell" data-label="Company">
                         {summary.company}
                       </span>
                       <span role="cell" data-label="Payment date">

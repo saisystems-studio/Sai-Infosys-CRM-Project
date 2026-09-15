@@ -28,6 +28,9 @@ class CompletedInquiryReportApiTests(APITestCase):
         self.completed = StatusTypeMaster.objects.create(
             status_type_name="Completed", created_by=self.super_user
         )
+        self.payment_pending = StatusTypeMaster.objects.create(
+            status_type_name="Payment Pending", created_by=self.super_user
+        )
         self.in_progress = StatusTypeMaster.objects.create(
             status_type_name="In Progress", created_by=self.super_user
         )
@@ -38,6 +41,7 @@ class CompletedInquiryReportApiTests(APITestCase):
             created_by=self.super_user,
         )
         self.own_completed = self.make_inquiry(self.staff, self.completed)
+        self.own_payment_pending = self.make_inquiry(self.staff, self.payment_pending)
         self.other_completed = self.make_inquiry(self.other_staff, self.completed)
         self.own_in_progress = self.make_inquiry(self.staff, self.in_progress)
         InquiryTaskProgress.objects.create(
@@ -48,6 +52,16 @@ class CompletedInquiryReportApiTests(APITestCase):
             End_Time=timezone.make_aware(datetime(2026, 8, 31, 10, 0)),
             Progress_Notes="Installed and verified the requested service.",
             Task_Status=TaskStatus.PROGRESS_SAVED,
+            Created_By=self.staff_user,
+        )
+        InquiryTaskProgress.objects.create(
+            Inquiry_Id=self.own_payment_pending,
+            Resource_Id=self.staff,
+            Work_Date=date(2026, 8, 31),
+            Start_Time=timezone.make_aware(datetime(2026, 8, 31, 11, 0)),
+            End_Time=timezone.make_aware(datetime(2026, 8, 31, 12, 0)),
+            Progress_Notes="Completed service; payment is pending.",
+            Task_Status=TaskStatus.PAYMENT_PENDING,
             Created_By=self.staff_user,
         )
 
@@ -72,18 +86,22 @@ class CompletedInquiryReportApiTests(APITestCase):
             Created_Id=self.super_user,
         )
 
-    def test_staff_sees_only_own_completed_inquiries_with_task_details(self):
+    def test_staff_sees_only_own_completed_and_payment_pending_inquiries(self):
         self.client.force_authenticate(self.staff_user)
 
         response = self.client.get("/api/inquiries/completed-inquiry-report/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([row["id"] for row in response.data], [self.own_completed.pk])
+        self.assertEqual(
+            [row["id"] for row in response.data],
+            [self.own_completed.pk, self.own_payment_pending.pk],
+        )
         self.assertEqual(response.data[0]["task_progress"][0]["resource_name"], "Report Staff")
         self.assertEqual(
             response.data[0]["task_progress"][0]["progress_notes"],
             "Installed and verified the requested service.",
         )
+        self.assertEqual(response.data[1]["status_name"], "Payment Pending")
 
     def test_super_admin_sees_every_staff_completed_inquiry(self):
         self.client.force_authenticate(self.super_user)
@@ -93,7 +111,7 @@ class CompletedInquiryReportApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             {row["id"] for row in response.data},
-            {self.own_completed.pk, self.other_completed.pk},
+            {self.own_completed.pk, self.own_payment_pending.pk, self.other_completed.pk},
         )
 
     def test_staff_without_report_permission_is_denied(self):
@@ -112,4 +130,7 @@ class CompletedInquiryReportApiTests(APITestCase):
         response = self.client.get("/api/inquiries/completed-inquiry-report/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([row["id"] for row in response.data], [self.own_completed.pk])
+        self.assertEqual(
+            [row["id"] for row in response.data],
+            [self.own_completed.pk, self.own_payment_pending.pk],
+        )

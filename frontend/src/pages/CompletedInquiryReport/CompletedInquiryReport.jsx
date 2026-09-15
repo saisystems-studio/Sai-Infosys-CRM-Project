@@ -3,7 +3,7 @@ import axios from "axios";
 import {
   filterCompletedInquiryReport,
   getCompletedReportDateRange,
-  getCompletedTaskDate,
+  getLatestCompletedTask,
 } from "./completedInquiryReport";
 import "./CompletedInquiryReport.css";
 
@@ -72,17 +72,13 @@ export default function CompletedInquiryReport({ onViewDetails }) {
     () => filterCompletedInquiryReport(rows, filters),
     [rows, filters],
   );
-  const taskRows = useMemo(() => {
-    return filteredInquiries.flatMap((inquiry) =>
-      (inquiry.task_progress || [])
-        .filter((task) => {
-          const taskDate = getCompletedTaskDate(task);
-          return task.end_time &&
-            (!filters.fromDate || taskDate >= filters.fromDate) &&
-            (!filters.toDate || taskDate <= filters.toDate);
-        })
-        .map((task) => ({ inquiry, task })),
-    );
+  const reportRows = useMemo(() => {
+    return filteredInquiries
+      .map((inquiry) => ({
+        inquiry,
+        task: getLatestCompletedTask(inquiry.task_progress, filters),
+      }))
+      .filter(({ task }) => task);
   }, [filteredInquiries, filters.fromDate, filters.toDate]);
   const staffOptions = [...new Map(rows.filter((row) => row.Resource_Id).map((row) => [String(row.Resource_Id), row.resource_name])).entries()];
   const productOptions = [...new Set(rows.flatMap((row) => (row.products || []).map(productName)))].sort();
@@ -94,7 +90,7 @@ export default function CompletedInquiryReport({ onViewDetails }) {
     }));
   };
 
-  if (loading) return <div className="completed-report-state"><span className="completed-report-spinner" />Loading today’s completed tasks…</div>;
+  if (loading) return <div className="completed-report-state"><span className="completed-report-spinner" />Loading today’s completed inquiries…</div>;
 
   return (
     <section className="completed-report-page">
@@ -102,35 +98,36 @@ export default function CompletedInquiryReport({ onViewDetails }) {
         <div>
           <span className="completed-report-eyebrow">Reports</span>
           <h1>Completed Inquiry Report</h1>
-          <p>Completed task details for the selected period.</p>
+          <p>Latest completed-task update, including payment-pending work, for each inquiry in the selected period.</p>
         </div>
-        <div className="completed-report-total"><strong>{taskRows.length}</strong><span>Completed tasks</span></div>
+        <div className="completed-report-total"><strong>{reportRows.length}</strong><span>Completed inquiries</span></div>
       </header>
 
       <div className="completed-report-filters">
-        <label className="completed-report-search"><span>Search</span><input value={filters.search} placeholder="Customer, staff, product or task…" onChange={(event) => setFilters({ ...filters, search: event.target.value })} /></label>
-        <label><span>Period</span><select value={datePreset} onChange={(event) => selectDatePreset(event.target.value)}><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="today-yesterday">Yesterday &amp; Today</option><option value="last-7-days">Last 7 days</option><option value="next-month">Next month</option><option value="custom">Mention period</option></select></label>
+        <label className="completed-report-search"><span>Search</span><input value={filters.search} placeholder="Company, staff, product or task…" onChange={(event) => setFilters({ ...filters, search: event.target.value })} /></label>
+        <label><span>Period</span><select value={datePreset} onChange={(event) => selectDatePreset(event.target.value)}><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="today-yesterday">Yesterday &amp; Today</option><option value="last-7-days">Last 7 days</option><option value="next-month">Next month</option><option value="this-month">This month</option><option value="last-month">Last month</option><option value="custom">Mention period</option></select></label>
         {datePreset === "custom" && <><label><span>From date</span><input type="date" value={filters.fromDate} onChange={(event) => setFilters({ ...filters, fromDate: event.target.value })} /></label><label><span>To date</span><input type="date" value={filters.toDate} onChange={(event) => setFilters({ ...filters, toDate: event.target.value })} /></label></>}
         <label><span>Staff</span><select value={filters.staffId} onChange={(event) => setFilters({ ...filters, staffId: event.target.value })}><option value="">All staff</option>{staffOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label><span>Product</span><select value={filters.product} onChange={(event) => setFilters({ ...filters, product: event.target.value })}><option value="">All products</option>{productOptions.map((name) => <option key={name}>{name}</option>)}</select></label>
         {Object.values(filters).some(Boolean) && <button type="button" onClick={() => { setDatePreset("today"); setFilters(emptyFilters); }}>Clear filters</button>}
       </div>
 
-      {error ? <div className="completed-report-error">{error}<button type="button" onClick={loadReport}>Retry</button></div> : taskRows.length === 0 ? (
-        <div className="completed-report-empty"><strong>No completed tasks found</strong><span>Try choosing a different period or adjusting the filters.</span></div>
+      {error ? <div className="completed-report-error">{error}<button type="button" onClick={loadReport}>Retry</button></div> : reportRows.length === 0 ? (
+        <div className="completed-report-empty"><strong>No completed inquiries found</strong><span>Try choosing a different period or adjusting the filters.</span></div>
       ) : (
         <div className="completed-report-table-wrap">
-          <div className="completed-report-table" role="table" aria-label="Completed task details">
+            <div className="completed-report-table" role="table" aria-label="Completed inquiry details">
             <div className="completed-report-table-head" role="row">
-              <span role="columnheader">Inquiry</span><span role="columnheader">Customer</span><span role="columnheader">Staff</span><span role="columnheader">Completed at</span><span role="columnheader">Task progress</span><span role="columnheader">Duration</span><span role="columnheader">Products</span><span role="columnheader">View</span>
+              <span role="columnheader">Inquiry</span><span role="columnheader">Company</span><span role="columnheader">Status</span><span role="columnheader">Staff</span><span role="columnheader">Completed at</span><span role="columnheader">Last update</span><span role="columnheader">Duration</span><span role="columnheader">Products</span><span role="columnheader">View</span>
             </div>
-            {taskRows.map(({ inquiry, task }) => (
-              <div className="completed-report-table-row" role="row" key={task.id}>
+            {reportRows.map(({ inquiry, task }) => (
+              <div className="completed-report-table-row" role="row" key={inquiry.id}>
                 <span role="cell" data-label="Inquiry">#{inquiry.id}</span>
-                <span role="cell" data-label="Customer" className="completed-report-customer-cell"><strong>{inquiry.customer_name || "Unknown customer"}</strong><small>{inquiry.phone_number || inquiry.email_id || "No contact details"}</small></span>
+                <span role="cell" data-label="Company" className="completed-report-customer-cell"><strong>{inquiry.company_name || "No company name"}</strong></span>
+                <span role="cell" data-label="Status"><em className={`completed-report-status ${inquiry.status_name === "Payment Pending" ? "completed-report-status-pending" : ""}`}>{inquiry.status_name || "Completed"}</em></span>
                 <span role="cell" data-label="Staff">{task.resource_name || inquiry.resource_name || "Unassigned"}</span>
                 <span role="cell" data-label="Completed at">{formatDateTime(task.end_time)}</span>
-                <span role="cell" data-label="Task progress" className="completed-report-notes">{task.progress_notes || "No notes recorded"}</span>
+                <span role="cell" data-label="Last update" className="completed-report-notes">{task.progress_notes || "No notes recorded"}</span>
                 <span role="cell" data-label="Duration" className="completed-report-duration">{formatDuration(task)}</span>
                 <span role="cell" data-label="Products" className="completed-report-products-cell">{(inquiry.products || []).length ? inquiry.products.map((item) => <em key={item.id}>{productName(item)}</em>) : "Not specified"}</span>
                 <span role="cell" data-label="View"><button type="button" className="completed-report-view-icon" onClick={() => onViewDetails(inquiry.id)} aria-label={`View full details for inquiry ${inquiry.id}`} title="View full details"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.75" /></svg></button></span>

@@ -431,8 +431,8 @@ class PaymentApprovalAccessTests(TestCase):
         self.assertEqual(response.data[0]["payment_amount"], "4.00")
         self.assertEqual(response.data[0]["payment_type"], "installment")
 
-    def test_super_admin_cannot_record_a_payment_from_pending(self):
-        """Fails if the approval role can bypass the Admin payment-entry flow."""
+    def test_super_admin_can_record_a_payment_from_pending(self):
+        """Fails if Super Admin cannot record a valid installment payment."""
         self.client.force_authenticate(self.super_admin_user)
 
         response = self.client.post(
@@ -441,7 +441,9 @@ class PaymentApprovalAccessTests(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["total_paid"], "4.00")
+        self.assertEqual(response.data["remaining_balance"], "6.00")
 
     def test_admin_cannot_mark_a_payment_as_received(self):
         """Fails if the read-only Admin role can update a payment."""

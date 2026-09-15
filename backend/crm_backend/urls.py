@@ -16,7 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from .views import current_user, customer_business_summary, dashboard_stats, super_admin_login
+from .views import (
+    current_user,
+    customer_business_summary,
+    dashboard_stats,
+    product_billing,
+    product_billing_customer_lookup,
+    staff_daily_task_report,
+    super_admin_login,
+)
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -29,6 +37,9 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='legacy-token-refresh'),
     path('api/dashboard-stats/', dashboard_stats, name='dashboard-stats'),
     path('api/customer-business-summary/', customer_business_summary, name='customer-business-summary'),
+    path('api/product-billing/', product_billing, name='product-billing'),
+    path('api/product-billing/customer-lookup/', product_billing_customer_lookup, name='product-billing-customer-lookup'),
+    path('api/staff-daily-task-report/', staff_daily_task_report, name='staff-daily-task-report'),
     path('api/', include('masters.urls')),
     path('api/', include('Customers.urls')),
     path('api/', include('Inquiry.urls')),

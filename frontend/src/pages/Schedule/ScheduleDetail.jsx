@@ -104,10 +104,14 @@ function RescheduleDatePicker({ value, onChange, disabled }) {
   const year = month.getFullYear();
   const monthIndex = month.getMonth();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const availableDays = Array.from(
-    { length: daysInMonth },
-    (_, index) => new Date(year, monthIndex, index + 1),
-  ).filter((date) => date.getDay() !== 0);
+  const firstWeekday = new Date(year, monthIndex, 1).getDay();
+  const calendarDays = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from(
+      { length: daysInMonth },
+      (_, index) => new Date(year, monthIndex, index + 1),
+    ),
+  ];
 
   return (
     <div className="reschedule-date-picker">
@@ -148,21 +152,23 @@ function RescheduleDatePicker({ value, onChange, disabled }) {
             </button>
           </div>
           <div className="reschedule-calendar-weekdays">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <span key={day}>{day}</span>
             ))}
           </div>
           <div className="reschedule-calendar-days">
-            {availableDays.map((date) => {
+            {calendarDays.map((date, index) => {
+              if (!date) return <span className="reschedule-calendar-empty" key={`empty-${index}`} aria-hidden="true" />;
               const dateValue = formatDateValue(date);
               const isSelected = dateValue === value;
               const isPast = date < today;
+              const isSunday = date.getDay() === 0;
               return (
                 <button
                   key={dateValue}
                   type="button"
-                  disabled={isPast}
-                  className={isSelected ? "selected" : ""}
+                  disabled={isPast || isSunday}
+                  className={`${isSelected ? "selected" : ""}${isSunday ? " sunday" : ""}`}
                   onClick={() => {
                     onChange(dateValue);
                     setOpen(false);

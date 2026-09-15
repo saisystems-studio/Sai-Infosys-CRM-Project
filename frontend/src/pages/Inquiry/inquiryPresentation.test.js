@@ -1,11 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  getCustomerInitials,
-  getSourceName,
-  getStatusTone,
-} from "./inquiryPresentation.js";
+import * as presentation from "./inquiryPresentation.js";
+
+const { getCustomerInitials, getSourceName, getStatusTone } = presentation;
 
 test("customer initials create a compact two-letter avatar", () => {
   assert.equal(getCustomerInitials("Acme Industries"), "AI");
@@ -30,4 +28,33 @@ test("source name falls back to the source master when an inquiry only has Sourc
   ];
 
   assert.equal(getSourceName(inquiry, sources), "Referral");
+});
+
+test("inquiry cards prefer the company name and fall back to the customer name", () => {
+  assert.equal(
+    presentation.getInquiryDisplayName?.({
+      company_name: "Acme Systems",
+      customer_name: "Anita Rao",
+    }),
+    "Acme Systems",
+  );
+  assert.equal(
+    presentation.getInquiryDisplayName?.({ customer_name: "Anita Rao" }),
+    "Anita Rao",
+  );
+});
+
+test("created-date periods keep only inquiries within the requested report range", () => {
+  const inquiries = [
+    { id: 1, created_date: "2026-09-15" },
+    { id: 2, created_date: "2026-09-14" },
+    { id: 3, created_date: "2026-09-09" },
+    { id: 4, created_date: "2026-08-31" },
+  ];
+  const now = new Date("2026-09-15T12:00:00");
+
+  assert.deepEqual(
+    presentation.filterInquiriesByCreatedPeriod?.(inquiries, "last-7-days", now),
+    [inquiries[0], inquiries[1], inquiries[2]],
+  );
 });

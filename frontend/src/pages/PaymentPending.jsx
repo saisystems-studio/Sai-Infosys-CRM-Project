@@ -5,8 +5,6 @@ import {
   FiBox,
   FiEdit3,
   FiPhone,
-  FiMail,
-  FiUsers,
 } from "react-icons/fi";
 import "./PaymentApproval.css";
 import "./PaymentPending.css";
@@ -127,6 +125,15 @@ export default function PaymentPending() {
         );
       }),
     [companyFilter, fromDate, payments, productFilter, toDate],
+  );
+
+  const totalRemaining = useMemo(
+    () =>
+      filteredPayments.reduce(
+        (total, payment) => total + (Number(payment.remaining_balance) || 0),
+        0,
+      ),
+    [filteredPayments],
   );
 
   const clearFilters = () => {
@@ -303,6 +310,10 @@ export default function PaymentPending() {
           <span className="payment-approval-kicker">Finance control</span>
           <h1>Payment Pending</h1>
           <p>Record full payments or installments and track balances.</p>
+        </div>
+        <div className="payment-pending-total">
+          <span>Total Remaining</span>
+          <strong>{formatAmount(totalRemaining)}</strong>
         </div>
         <span className="payment-approval-count">
           <strong>{filteredPayments.length}</strong>
@@ -618,67 +629,47 @@ export default function PaymentPending() {
                     </fieldset>
                   </form>
 
-                  <div className="payment-pending-task-history">
-                    <h4>Payment Follow-up History</h4>
-                    {selectedInquiry.followUps?.length ? (
-                      <div className="task-timeline">
-                        {selectedInquiry.followUps.map((followUp) => (
-                          <div
-                            className="timeline-item payment-history-followup"
-                            key={followUp.FollowUp_Id}
-                          >
-                            <div className="timeline-date">
-                              {formatDate(followUp.FollowUp_Date)}
-                            </div>
-                            <div className="timeline-content">
-                              <div className="timeline-title">
-                                <span
-                                  className="payment-timeline-icon"
-                                  aria-hidden="true"
+                  <div className="payment-detail-history-grid">
+                    <div className="payment-pending-task-history">
+                      <h4>Payment Follow-up History</h4>
+                      {selectedInquiry.followUps?.length ? (
+                        <div className="task-timeline">
+                          {selectedInquiry.followUps.map((followUp) => (
+                            <div
+                              className="timeline-item payment-history-followup"
+                              key={followUp.FollowUp_Id}
+                            >
+                              <div className="timeline-date">
+                                {formatDate(followUp.FollowUp_Date)}
+                              </div>
+                              <div className="timeline-content">
+                                <div
+                                  className="timeline-description"
+                                  style={{
+                                    whiteSpace: "pre-wrap",
+                                    overflowWrap: "anywhere",
+                                  }}
                                 >
-                                  {followUp.FollowUp_Type === "email" ? (
-                                    <FiMail />
-                                  ) : followUp.FollowUp_Type === "meeting" ? (
-                                    <FiUsers />
-                                  ) : (
-                                    <FiPhone />
-                                  )}
-                                </span>
-                                <strong>
-                                  {{
-                                    call: "Call",
-                                    email: "Email",
-                                    meeting: "Meeting",
-                                  }[followUp.FollowUp_Type] || "Follow-up"}
-                                </strong>
-                              </div>
-                              <div
-                                className="timeline-description"
-                                style={{
-                                  whiteSpace: "pre-wrap",
-                                  overflowWrap: "anywhere",
-                                }}
-                              >
-                                {followUp.Notes || "No notes added."}
+                                  {followUp.Notes || "No notes added."}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="payment-approval-empty">
-                        No payment follow-ups recorded.
-                      </p>
-                    )}
-                  </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="payment-approval-empty">
+                          No payment follow-ups recorded.
+                        </p>
+                      )}
+                    </div>
 
-                  {/* Task History */}
-                  <div className="payment-pending-task-history">
-                    <h4>Task History</h4>
-                    {selectedInquiry.detail.task_progress?.length ? (
-                      <div className="task-timeline">
-                        {selectedInquiry.detail.task_progress.map(
-                          (task, index) => (
+                    {/* Task History */}
+                    <div className="payment-pending-task-history">
+                      <h4>Task History</h4>
+                      {selectedInquiry.detail.task_progress?.length ? (
+                        <div className="task-timeline">
+                          {selectedInquiry.detail.task_progress.map(
+                            (task, index) => (
                             <div
                               className={`timeline-item payment-history-task ${task.task_status === "rescheduled" ? "is-rescheduled" : ""}`}
                               key={task.id || index}
@@ -733,14 +724,15 @@ export default function PaymentPending() {
                                 </div>
                               </div>
                             </div>
-                          ),
-                        )}
-                      </div>
-                    ) : (
-                      <p className="payment-approval-empty">
-                        No task updates recorded.
-                      </p>
-                    )}
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <p className="payment-approval-empty">
+                          No task updates recorded.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </>

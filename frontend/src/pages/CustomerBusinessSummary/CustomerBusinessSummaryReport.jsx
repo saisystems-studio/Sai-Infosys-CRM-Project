@@ -49,24 +49,24 @@ const theme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: { boxShadow: "none", padding: "6px 16px", fontSize: "15px" },
+        root: { boxShadow: "none", padding: "5px 12px", fontSize: "12px" },
       },
     },
     MuiTextField: {
       styleOverrides: {
-        root: { "& .MuiInputBase-root": { fontSize: "15px", height: "36px" } },
+        root: { "& .MuiInputBase-root": { fontSize: "12px", height: "34px" } },
       },
     },
     MuiTableCell: {
       styleOverrides: {
-        root: { borderColor: "#eef0f6", fontSize: 14, padding: "9px 12px" },
+        root: { borderColor: "#eef0f6", fontSize: 12, padding: "7px 10px" },
         head: {
           background: "#f8f9fc",
           color: "#69738b",
           fontWeight: 600,
           whiteSpace: "nowrap",
-          fontSize: 13,
-          padding: "9px 12px",
+          fontSize: 11,
+          padding: "7px 10px",
         },
       },
     },
@@ -324,12 +324,12 @@ export default function CustomerBusinessSummaryReport() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    fontSize: "15px",
+                    fontSize: "12px",
                     padding: "4px 0",
                   }}
                 >
-                  <strong style={{ fontSize: "16px" }}>{option.company}</strong>
-                  <span style={{ color: "#778096", fontSize: "14px" }}>
+                  <strong style={{ fontSize: "13px" }}>{option.company}</strong>
+                  <span style={{ color: "#778096", fontSize: "11px" }}>
                     {option.name}
                   </span>
                 </div>
@@ -337,7 +337,7 @@ export default function CustomerBusinessSummaryReport() {
             )}
             ListboxProps={{
               style: {
-                fontSize: "15px",
+                fontSize: "12px",
                 maxHeight: "200px",
               },
             }}
@@ -364,8 +364,8 @@ export default function CustomerBusinessSummaryReport() {
             onChange={field("from")}
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{
-              "& .MuiInputBase-root": { height: "36px", fontSize: "15px" },
-              width: "165px",
+              "& .MuiInputBase-root": { height: "34px", fontSize: "12px" },
+              width: "150px",
             }}
           />
           <TextField
@@ -376,8 +376,8 @@ export default function CustomerBusinessSummaryReport() {
             onChange={field("to")}
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{
-              "& .MuiInputBase-root": { height: "36px", fontSize: "15px" },
-              width: "165px",
+              "& .MuiInputBase-root": { height: "34px", fontSize: "12px" },
+              width: "150px",
             }}
           />
           <Button

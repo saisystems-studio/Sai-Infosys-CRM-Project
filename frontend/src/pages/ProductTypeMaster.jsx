@@ -4,6 +4,8 @@ import "../styles/Master.css";
 
 export default function ProductTypeMaster({ permissions = {} }) {
   const [productType, setProductType] = useState("");
+  const [gstPercentage, setGstPercentage] = useState("");
+  const [hsnCode, setHsnCode] = useState("");
   const [productTypes, setProductTypes] = useState([]);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -32,8 +34,8 @@ export default function ProductTypeMaster({ permissions = {} }) {
   // Save / Update product type
   const handleSave = async () => {
     try {
-      if (productType.trim() === "") {
-        alert("Please enter a product type name");
+      if (productType.trim() === "" || gstPercentage === "" || hsnCode.trim() === "") {
+        alert("Please enter the product type, GST percentage, and HSN code");
         return;
       }
 
@@ -42,16 +44,22 @@ export default function ProductTypeMaster({ permissions = {} }) {
       if (editId) {
         await axios.put(`/crm/api/product-types/${editId}/`, {
           product_type_name: productType,
+          gst_percentage: gstPercentage,
+          hsn_code: hsnCode.trim(),
         });
         alert("Product type updated successfully");
       } else {
         await axios.post("/crm/api/product-types/", {
           product_type_name: productType,
+          gst_percentage: gstPercentage,
+          hsn_code: hsnCode.trim(),
         });
         alert("Product type saved successfully");
       }
 
       setProductType("");
+      setGstPercentage("");
+      setHsnCode("");
       setEditId(null);
       await loadProductTypes();
     } catch (error) {
@@ -66,6 +74,8 @@ export default function ProductTypeMaster({ permissions = {} }) {
   const handleEdit = (item) => {
     setEditId(item.Id);
     setProductType(item.product_type_name);
+    setGstPercentage(item.gst_percentage ?? "");
+    setHsnCode(item.hsn_code ?? "");
   };
 
   // Delete product type
@@ -89,6 +99,8 @@ export default function ProductTypeMaster({ permissions = {} }) {
   // Clear form
   const handleClear = () => {
     setProductType("");
+    setGstPercentage("");
+    setHsnCode("");
     setEditId(null);
   };
 
@@ -128,6 +140,31 @@ export default function ProductTypeMaster({ permissions = {} }) {
               />
               {editId && <span className="edit-indicator">Editing</span>}
             </div>
+          </div>
+          <div className="form-group">
+            <label>GST %</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={gstPercentage}
+              onChange={(e) => setGstPercentage(e.target.value)}
+              placeholder="e.g. 18"
+              className="master-input"
+              onKeyPress={(e) => e.key === "Enter" && handleSave()}
+            />
+          </div>
+          <div className="form-group">
+            <label>HSN Code</label>
+            <input
+              type="text"
+              value={hsnCode}
+              onChange={(e) => setHsnCode(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+              placeholder="e.g. 998314"
+              className="master-input"
+              onKeyPress={(e) => e.key === "Enter" && handleSave()}
+            />
           </div>
           <div className="button-group">
             <button
@@ -181,6 +218,8 @@ export default function ProductTypeMaster({ permissions = {} }) {
               <tr>
                 <th className="col-sno">#</th>
                 <th>Product Type Name</th>
+                <th>GST %</th>
+                <th>HSN Code</th>
                 <th className="col-status">Status</th>
                 <th className="col-actions">Actions</th>
               </tr>
@@ -188,7 +227,7 @@ export default function ProductTypeMaster({ permissions = {} }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="loading-cell">
+                  <td colSpan="6" className="loading-cell">
                     <div className="loader"></div>
                     Loading...
                   </td>
@@ -201,6 +240,8 @@ export default function ProductTypeMaster({ permissions = {} }) {
                   >
                     <td className="col-sno">{index + 1}</td>
                     <td className="product-name">{item.product_type_name}</td>
+                    <td>{item.gst_percentage ?? "—"}</td>
+                    <td>{item.hsn_code || "—"}</td>
                     <td className="col-status">
                       <span className="status-badge active">Active</span>
                     </td>
@@ -252,7 +293,7 @@ export default function ProductTypeMaster({ permissions = {} }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="empty-cell">
+                  <td colSpan="6" className="empty-cell">
                     {searchTerm
                       ? "No matching product types found"
                       : "No product types added yet"}

@@ -199,9 +199,9 @@
 }
 
 .filter-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.65fr) repeat(4, minmax(130px, 1fr)) 34px;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 4px;
   padding: 8px;
@@ -216,7 +216,6 @@
   position: relative;
   display: flex;
   align-items: center;
-  flex: 0 0 310px;
   min-width: 220px;
 }
 
@@ -248,9 +247,9 @@
 }
 
 .filter-select {
-  width: auto;
-  flex: 3 1 201px;
-  max-width: 206px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
   padding: 0 34px 0 12px;
   cursor: pointer;
 }
@@ -297,8 +296,7 @@
   color: #4f46e5;
   background: #f8faff;
   cursor: pointer;
-  flex: 0 0 34px;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .refresh-btn:hover {
@@ -309,6 +307,11 @@
 .refresh-btn:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+/* A mentioned period reveals two compact date controls without breaking the row. */
+.filter-bar:has(.date-filter) {
+  grid-template-columns: minmax(220px, 1.5fr) repeat(6, minmax(105px, 1fr)) 34px;
 }
 
 .list-summary {
@@ -805,17 +808,15 @@
   }
 
   .filter-bar {
+    grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(125px, 1fr)) 34px;
     gap: 7px;
   }
 
-  .search-wrapper {
-    flex-basis: 260px;
+  .filter-bar:has(.date-filter) {
+    grid-template-columns: minmax(220px, 1.5fr) repeat(3, minmax(125px, 1fr)) 34px;
   }
 
-  .filter-select {
-    flex-basis: 125px;
-    max-width: 150px;
-  }
+  .filter-select:last-of-type { grid-column: 1 / span 2; }
 }
 
 @media (max-width: 760px) {
@@ -833,20 +834,25 @@
   }
 
   .filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
   }
 
+  .filter-bar:has(.date-filter) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .search-wrapper {
-    flex-basis: 100%;
+    grid-column: 1 / -1;
   }
 
   .filter-select {
-    flex: 1 1 150px;
     max-width: none;
   }
 
   .refresh-btn {
     align-self: center;
+    justify-self: end;
   }
 }
 
@@ -888,12 +894,18 @@
     gap: 6px;
   }
 
+  .filter-bar:has(.date-filter) {
+    grid-template-columns: 1fr;
+  }
+
   .filter-select {
-    flex-basis: 100%;
+    grid-column: 1 / -1;
   }
 
   .refresh-btn {
     margin-left: 0;
+    grid-column: 1 / -1;
+    justify-self: stretch;
   }
 
   .contact {

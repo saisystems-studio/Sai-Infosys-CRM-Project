@@ -328,3 +328,49 @@ class InquiryTaskProgress(models.Model):
                 name="unique_active_task_per_resource",
             )
         ]
+
+
+class ProductBilling(models.Model):
+    Id = models.AutoField(primary_key=True, db_column="Id")
+    Customer_Id = models.ForeignKey(
+        CustomerDetails,
+        on_delete=models.PROTECT,
+        db_column="Customer_Id",
+    )
+    Contact_Number = models.CharField(max_length=20, db_column="Contact_Number")
+    Customer_Name = models.CharField(max_length=500, blank=True, db_column="Customer_Name")
+    Company_Name = models.CharField(max_length=250, blank=True, db_column="Company_Name")
+    License_Details = models.TextField(blank=True, db_column="License_Details")
+    Product_Id = models.ForeignKey(
+        ProductTypeMaster,
+        on_delete=models.PROTECT,
+        db_column="Product_Id",
+    )
+    Rate = models.DecimalField(max_digits=12, decimal_places=2, db_column="Rate")
+    Amount = models.DecimalField(max_digits=12, decimal_places=2, db_column="Amount")
+    Quantity = models.DecimalField(max_digits=10, decimal_places=2, db_column="Quantity")
+    Is_External_Renewal = models.BooleanField(default=False, db_column="Is_External_Renewal")
+    Has_GST = models.BooleanField(default=False, db_column="Has_GST")
+    GST_Percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0, db_column="GST_Percentage")
+    GST = models.DecimalField(max_digits=12, decimal_places=2, default=0, db_column="GST")
+    HSN_Code = models.CharField(max_length=20, blank=True, db_column="HSN_Code")
+    Has_CGST = models.BooleanField(default=False, db_column="Has_CGST")
+    CGST = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True, db_column="CGST"
+    )
+    CGST_Percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True, db_column="CGST_Percentage"
+    )
+    Has_SGST = models.BooleanField(default=False, db_column="Has_SGST")
+    SGST = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True, db_column="SGST"
+    )
+    SGST_Percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True, db_column="SGST_Percentage"
+    )
+    Created_By = models.ForeignKey(User, on_delete=models.PROTECT, db_column="Created_By")
+    Created_On = models.DateTimeField(auto_now_add=True, db_column="Created_On")
+
+    class Meta:
+        db_table = "ProductBilling_tbl"
+        ordering = ["-Created_On", "-Id"]

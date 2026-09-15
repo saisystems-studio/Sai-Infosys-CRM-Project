@@ -21,7 +21,11 @@ export function canViewPaymentApproval(user = {}) {
 
 export function canRecordPayment(user = {}) {
   const role = normalizeRole(user.role || user.Role || user.user_type);
-  return role === "admin";
+  return (
+    role === "admin" ||
+    role === "super admin" ||
+    (!role && user.is_superuser === true)
+  );
 }
 
 export function canViewPaymentPending(user = {}) {

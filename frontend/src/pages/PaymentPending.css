@@ -983,6 +983,23 @@
   background: #229d75;
 }
 
+.payment-detail-reference .payment-detail-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.payment-detail-reference .payment-detail-history-grid .payment-pending-task-history {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.payment-detail-reference .payment-detail-history-grid .timeline-item {
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 10px;
+}
+
 .payment-detail-reference .payment-pending-task-history {
   margin-top: 16px;
 }
@@ -1071,6 +1088,11 @@
 
   .payment-detail-update-grid {
     grid-template-columns: 1fr;
+  }
+
+  .payment-detail-reference .payment-detail-history-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .payment-detail-reference .payment-pending-detail-summary {

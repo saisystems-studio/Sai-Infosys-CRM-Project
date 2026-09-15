@@ -117,7 +117,6 @@
 
 .payment-approval-balance {
   color: #b45309;
-  font-weight: 700;
 }
 
 .payment-approval-amount-column {
@@ -125,16 +124,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-.payment-received-btn {
+.payment-approval-action-btn {
   padding: 8px 14px;
   border: 0;
   border-radius: 7px;
   color: #fff;
-  background: #4f46e5;
+  background: #2563eb;
   cursor: pointer;
 }
 
-.payment-received-btn:disabled {
+.payment-approval-action-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.payment-approval-action-btn:disabled {
   cursor: wait;
   opacity: 0.6;
 }
@@ -192,22 +195,26 @@
   color: #fff;
   box-shadow: 0 14px 32px rgba(16, 42, 67, .14);
 }
+
 .payment-finance-banner .payment-approval-kicker {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .16em;
   color: #91e5d2;
 }
+
 .payment-finance-banner h1 {
   margin: 3px 0 2px;
   font-size: 22px;
   color: #fff;
 }
+
 .payment-finance-banner p {
   margin: 0;
   font-size: 12px;
   color: #d9e8ec;
 }
+
 .payment-finance-banner .payment-approval-count {
   display: inline-flex;
   align-items: center;
@@ -219,8 +226,51 @@
   background: #fff;
   color: #6366f1;
 }
-.payment-finance-banner .payment-approval-count strong { font-size: 18px; }
-.payment-finance-banner .payment-approval-count span { font-size: 10px; font-weight: 500; color: #64748b; }
+
+.payment-finance-banner .payment-approval-count strong {
+  font-size: 18px;
+}
+
+.payment-finance-banner .payment-approval-count span {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.payment-finance-banner .payment-pending-total {
+  display: grid;
+  gap: 3px;
+  margin-left: auto;
+  text-align: right;
+}
+
+.payment-finance-banner .payment-pending-total span {
+  color: #d9e8ec;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.payment-finance-banner .payment-pending-total strong {
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+}
+
 @media (max-width: 480px) {
-  .payment-finance-banner { flex-wrap: wrap; padding: 16px; }
+  .payment-finance-banner {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .payment-finance-banner .payment-pending-total {
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
+.payment-approval-payment {
+  font-weight: 700;
+  color: #0f172a;
 }

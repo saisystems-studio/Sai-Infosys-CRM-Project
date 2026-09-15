@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./InquiryList.css";
 import {
+  filterInquiriesByCreatedPeriod,
   getCustomerInitials,
+  getInquiryCreatedDate,
+  getInquiryDisplayName,
   getSourceName,
   getStatusTone,
 } from "./inquiryPresentation";
@@ -224,12 +227,7 @@ const getResourceId = (item) =>
 const getScheduleDate = (item) =>
   item?.schedule_date || item?.scheduled_date || item?.follow_up_date || "";
 
-const getCreatedDate = (item) =>
-  item?.created_at ||
-  item?.created_date ||
-  item?.date ||
-  item?.inquiry_date ||
-  "";
+const getCreatedDate = getInquiryCreatedDate;
 
 const getProducts = (item) => {
   if (Array.isArray(item?.products)) return item.products;
@@ -293,6 +291,7 @@ function InquiryCard({
 }) {
   const inquiryId = getId(inquiry);
   const customerName = getCustomerName(inquiry);
+  const displayName = getInquiryDisplayName(inquiry);
   const phone = getCustomerPhone(inquiry);
   const email = getCustomerEmail(inquiry);
   const serial = getSerial(inquiry);
@@ -323,16 +322,16 @@ function InquiryCard({
       onKeyDown={handleCardKeyDown}
       role={canOpenForEdit ? "button" : undefined}
       tabIndex={canOpenForEdit ? 0 : undefined}
-      aria-label={canOpenForEdit ? `Edit inquiry for ${customerName}` : undefined}
+      aria-label={canOpenForEdit ? `Edit inquiry for ${displayName}` : undefined}
     >
       <div className="card-header">
         <div className="customer-info">
           <div className="avatar" aria-hidden="true">
-            {getCustomerInitials(customerName)}
+            {getCustomerInitials(displayName)}
           </div>
           <div>
             <span className="card-kicker">Inquiry #{inquiryId || "—"}</span>
-            <h3>{customerName}</h3>
+            <h3>{displayName}</h3>
             <div className="contact">
               {email && (
                 <span>
@@ -603,6 +602,9 @@ function InquiryList({
   const [statusFilter, setStatusFilter] = useState("");
   const [resourceFilter, setResourceFilter] = useState("");
   const [productFilter, setProductFilter] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -824,8 +826,16 @@ function InquiryList({
   const filteredInquiries = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
-    return inquiries.filter((inquiry) => {
+    const periodInquiries = periodFilter === "custom"
+      ? inquiries.filter((inquiry) => {
+        const createdDate = String(getInquiryCreatedDate(inquiry) || "").slice(0, 10);
+        return (!fromDate || createdDate >= fromDate) && (!toDate || createdDate <= toDate);
+      })
+      : filterInquiriesByCreatedPeriod(inquiries, periodFilter);
+
+    return periodInquiries.filter((inquiry) => {
       const customerName = getCustomerName(inquiry).toLowerCase();
+      const companyName = getInquiryDisplayName(inquiry).toLowerCase();
       const phone = getCustomerPhone(inquiry).toLowerCase();
       const email = getCustomerEmail(inquiry).toLowerCase();
       const serial = getSerial(inquiry).toLowerCase();
@@ -835,6 +845,7 @@ function InquiryList({
       const matchesSearch =
         !searchValue ||
         customerName.includes(searchValue) ||
+        companyName.includes(searchValue) ||
         phone.includes(searchValue) ||
         email.includes(searchValue) ||
         serial.includes(searchValue) ||
@@ -874,6 +885,9 @@ function InquiryList({
     statusFilter,
     resourceFilter,
     productFilter,
+    periodFilter,
+    fromDate,
+    toDate,
   ]);
 
   /* =======================================================
@@ -1049,7 +1063,7 @@ function InquiryList({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by customer, phone, email, serial..."
+            placeholder="Search by company, customer, phone, email, serial..."
           />
           {search && (
             <button className="clear-btn" onClick={() => setSearch("")}>
@@ -1057,6 +1071,27 @@ function InquiryList({
             </button>
           )}
         </div>
+
+        <select
+          value={periodFilter}
+          onChange={(e) => setPeriodFilter(e.target.value)}
+          className="filter-select"
+        >
+          <option value="">All periods</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="yesterday-and-today">Yesterday &amp; Today</option>
+          <option value="last-7-days">Last 7 days</option>
+          <option value="this-month">This month</option>
+          <option value="last-month">Last month</option>
+          <option value="next-month">Next month</option>
+          <option value="custom">Mention period</option>
+        </select>
+
+        {periodFilter === "custom" && <>
+          <input className="filter-select date-filter" type="date" value={fromDate} aria-label="From date" onChange={(event) => setFromDate(event.target.value)} />
+          <input className="filter-select date-filter" type="date" value={toDate} aria-label="To date" min={fromDate || undefined} onChange={(event) => setToDate(event.target.value)} />
+        </>}
 
         <select
           value={statusFilter}
@@ -1113,7 +1148,7 @@ function InquiryList({
             Showing <strong>{filteredInquiries.length}</strong> of{" "}
             <strong>{inquiries.length}</strong> inquiries
           </span>
-          {(search || statusFilter || resourceFilter || productFilter) && (
+          {(search || statusFilter || resourceFilter || productFilter || periodFilter || fromDate || toDate) && (
             <button
               className="clear-filters"
               onClick={() => {
@@ -1121,6 +1156,9 @@ function InquiryList({
                 setStatusFilter("");
                 setResourceFilter("");
                 setProductFilter("");
+                setPeriodFilter("");
+                setFromDate("");
+                setToDate("");
               }}
             >
               Clear Filters

@@ -33,8 +33,10 @@ import ScheduleDetail from "./Schedule/ScheduleDetail";
 import PaymentApproval from "./PaymentApproval";
 import PaymentReceivedDetails from "./PaymentReceivedDetails";
 import PaymentPending from "./PaymentPending";
+import ProductBilling from "./ProductBilling/ProductBilling";
 import CompletedInquiryReport from "./CompletedInquiryReport/CompletedInquiryReport.jsx";
 import StaffPerformanceReport from "./StaffPerformanceReport";
+import StaffDailyTaskReport from "./StaffDailyTaskReport/StaffDailyTaskReport";
 const CustomerBusinessSummaryReport = lazy(
   () => import("./CustomerBusinessSummary/CustomerBusinessSummaryReport"),
 );
@@ -48,6 +50,8 @@ import { createStaffMode, editStaffMode } from "./Staff/staffNavigation";
 import {
   buildMenuAccess,
   canViewCustomerBusinessSummaryReport,
+  canViewProductBilling,
+  canViewStaffDailyTaskReport,
   canViewStaffPerformanceReport,
   hasFullMenuAccess,
   loadActiveMenu,
@@ -272,8 +276,10 @@ function Dashboard() {
     "Rating Type Master",
     "License Type Master",
     "Schedule",
+    "Product Billing",
     "Schedule Detail",
     "Completed Inquery Report",
+    "Customer Business Summary",
     "Customer Business Summary Report",
     "Staff Performance Report",
     "Completed Inquiry Detail",
@@ -426,11 +432,20 @@ function Dashboard() {
         const activeMenus = allMenus
           .filter((menu) => menu.Is_Active === true)
           .filter((menu) => {
-            if (menu.Menu_Name === "Customer Business Summary Report") {
+            if (
+              menu.Menu_Name === "Customer Business Summary" ||
+              menu.Menu_Name === "Customer Business Summary Report"
+            ) {
               return canViewCustomerBusinessSummaryReport(loggedInUser);
             }
             if (menu.Menu_Name === "Staff Performance Report") {
               return canViewStaffPerformanceReport(loggedInUser);
+            }
+            if (menu.Menu_Name === "Staff Daily Task Report") {
+              return canViewStaffDailyTaskReport(loggedInUser);
+            }
+            if (menu.Menu_Name === "Product Billing") {
+              return canViewProductBilling(loggedInUser);
             }
             const isPaymentApproval = menu.Menu_Name === "Payment Approval";
             const isPaymentPending = menu.Menu_Name === "Payment Pending";
@@ -646,18 +661,55 @@ function Dashboard() {
   ======================================================= */
 
   const displayMenus = (() => {
-    const paymentReceivedMenu = menus.find((menu) =>
+    const scheduleMenu = menus.find((menu) => menu.Menu_Name === "Schedule");
+    const menusWithProductBilling =
+      canViewProductBilling(user) &&
+      !menus.some((menu) => menu.Menu_Name === "Product Billing")
+        ? [
+            ...menus,
+            {
+              Id: "product-billing",
+              Menu_Name: "Product Billing",
+              parent_id: null,
+              Display_Order: Number(scheduleMenu?.Display_Order || 0) + 0.1,
+              Icon: "receipt",
+              Is_Active: true,
+            },
+          ]
+        : menus;
+    const reportsMenu = menusWithProductBilling.find((menu) => menu.Menu_Name === "Reports");
+    // Existing databases receive this menu through migration 0018. Keep the
+    // report discoverable for Super Admins while a development database has
+    // not yet applied that migration.
+    const menusWithDailyTaskReport =
+      canViewStaffDailyTaskReport(user) &&
+      !menusWithProductBilling.some((menu) => menu.Menu_Name === "Staff Daily Task Report")
+        ? [
+            ...menusWithProductBilling,
+            {
+              Id: "staff-daily-task-report",
+              Menu_Name: "Staff Daily Task Report",
+              parent_id: reportsMenu?.Id ?? "reports-root",
+              Display_Order: 95,
+              Icon: "chart",
+              Is_Active: true,
+            },
+          ]
+        : menusWithProductBilling;
+    const paymentReceivedMenu = menusWithDailyTaskReport.find((menu) =>
       isPaymentReceivedReportMenu(menu.Menu_Name),
     );
     if (
       !paymentReceivedMenu ||
-      menus.some((menu) => menu.Menu_Name === "Reports")
+      menusWithDailyTaskReport.some((menu) => menu.Menu_Name === "Reports")
     ) {
-      return menus;
+      return menusWithDailyTaskReport;
     }
 
     return [
-      ...menus.filter((menu) => !isPaymentReceivedReportMenu(menu.Menu_Name)),
+      ...menusWithDailyTaskReport.filter(
+        (menu) => !isPaymentReceivedReportMenu(menu.Menu_Name),
+      ),
       {
         Id: "reports-root",
         Menu_Name: "Reports",
@@ -861,13 +913,25 @@ function Dashboard() {
                       {children.map((child) => (
                         <button
                           key={child.Id}
-                          className={active === child.Menu_Name ? "active" : ""}
+                          className={
+                            active === child.Menu_Name ||
+                            (child.Menu_Name ===
+                              "Customer Business Summary Report" &&
+                              active === "Customer Business Summary")
+                              ? "active"
+                              : ""
+                          }
                           onClick={() => {
                             handleMenuNavigation(child.Menu_Name);
                             setSidebarOpen(false);
                           }}
                         >
-                          <span>{child.Menu_Name}</span>
+                          <span>
+                            {child.Menu_Name ===
+                            "Customer Business Summary Report"
+                              ? "Customer Business Summary"
+                              : child.Menu_Name}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -1001,7 +1065,8 @@ function Dashboard() {
             <CompletedInquiryReport
               onViewDetails={handleViewCompletedInquiry}
             />
-          ) : active === "Customer Business Summary Report" ? (
+          ) : active === "Customer Business Summary" ||
+            active === "Customer Business Summary Report" ? (
             canViewCustomerBusinessSummaryReport(user) ? (
               <Suspense fallback={<p>Loading customer report...</p>}>
                 <CustomerBusinessSummaryReport />
@@ -1012,6 +1077,12 @@ function Dashboard() {
           ) : active === "Staff Performance Report" ? (
             canViewStaffPerformanceReport(user) ? (
               <StaffPerformanceReport />
+            ) : (
+              <p>You do not have permission to view this report.</p>
+            )
+          ) : active === "Staff Daily Task Report" ? (
+            canViewStaffDailyTaskReport(user) ? (
+              <StaffDailyTaskReport />
             ) : (
               <p>You do not have permission to view this report.</p>
             )
@@ -1027,6 +1098,12 @@ function Dashboard() {
             <PaymentApproval />
           ) : active === "Payment Pending" ? (
             <PaymentPending />
+          ) : active === "Product Billing" ? (
+            canViewProductBilling(user) ? (
+              <ProductBilling />
+            ) : (
+              <p>You do not have permission to view product billing.</p>
+            )
           ) : isPaymentReceivedReportMenu(active) ? (
             <PaymentReceivedDetails />
           ) : (

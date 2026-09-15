@@ -10,6 +10,11 @@ from .models import MenuMaster
 # Serializer for Product Type Master
 
 class ProductTypeMasterSerializer(serializers.ModelSerializer):
+    def validate_gst_percentage(self, value):
+        if value is not None and not 0 <= value <= 100:
+            raise serializers.ValidationError("GST percentage must be between 0 and 100.")
+        return value
+
     class Meta:
         model = ProductTypeMaster
         fields = '__all__'

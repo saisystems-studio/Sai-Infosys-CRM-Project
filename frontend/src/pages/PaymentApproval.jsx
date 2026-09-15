@@ -21,9 +21,13 @@ const formatDate = (value) =>
     : "-";
 
 const getPaymentProduct = (payment) =>
-  payment?.product_name || payment?.product?.product_type_name || payment?.requirement || "Product";
+  payment?.product_name ||
+  payment?.product?.product_type_name ||
+  payment?.requirement ||
+  "Product";
 
-const getPaymentCompany = (payment) => payment?.company_name || "Unassigned Company";
+const getPaymentCompany = (payment) =>
+  payment?.company_name || "Unassigned Company";
 
 export default function PaymentApproval() {
   const [payments, setPayments] = useState([]);
@@ -39,13 +43,17 @@ export default function PaymentApproval() {
 
   const productOptions = useMemo(
     () =>
-      [...new Set(payments.map((payment) => getPaymentProduct(payment)))].filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      [...new Set(payments.map((payment) => getPaymentProduct(payment)))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
     [payments],
   );
 
   const companyOptions = useMemo(
     () =>
-      [...new Set(payments.map((payment) => getPaymentCompany(payment)))].filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      [...new Set(payments.map((payment) => getPaymentCompany(payment)))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
     [payments],
   );
 
@@ -54,21 +62,32 @@ export default function PaymentApproval() {
       payments.filter((payment) => {
         const productName = getPaymentProduct(payment);
         const companyName = getPaymentCompany(payment);
-        const paymentDate = payment?.payment_date ? new Date(payment.payment_date) : null;
-        const fromDateValue = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+        const paymentDate = payment?.payment_date
+          ? new Date(payment.payment_date)
+          : null;
+        const fromDateValue = fromDate
+          ? new Date(`${fromDate}T00:00:00`)
+          : null;
         const toDateValue = toDate ? new Date(`${toDate}T23:59:59`) : null;
 
-        const matchesProduct = productFilter === "all" || productName === productFilter;
-        const matchesCompany = companyFilter === "all" || companyName === companyFilter;
-        const matchesFromDate = !fromDate || !paymentDate || paymentDate >= fromDateValue;
-        const matchesToDate = !toDate || !paymentDate || paymentDate <= toDateValue;
+        const matchesProduct =
+          productFilter === "all" || productName === productFilter;
+        const matchesCompany =
+          companyFilter === "all" || companyName === companyFilter;
+        const matchesFromDate =
+          !fromDate || !paymentDate || paymentDate >= fromDateValue;
+        const matchesToDate =
+          !toDate || !paymentDate || paymentDate <= toDateValue;
 
-        return matchesProduct && matchesCompany && matchesFromDate && matchesToDate;
+        return (
+          matchesProduct && matchesCompany && matchesFromDate && matchesToDate
+        );
       }),
     [companyFilter, fromDate, payments, productFilter, toDate],
   );
 
-  const hasActiveFilters = productFilter !== "all" || companyFilter !== "all" || fromDate || toDate;
+  const hasActiveFilters =
+    productFilter !== "all" || companyFilter !== "all" || fromDate || toDate;
 
   const clearFilters = () => {
     setProductFilter("all");
@@ -137,33 +156,55 @@ export default function PaymentApproval() {
         <div className="payment-pending-filter-group">
           <label>
             <span>Product</span>
-            <select value={productFilter} onChange={(event) => setProductFilter(event.target.value)}>
+            <select
+              value={productFilter}
+              onChange={(event) => setProductFilter(event.target.value)}
+            >
               <option value="all">All products</option>
               {productOptions.map((product) => (
-                <option key={product} value={product}>{product}</option>
+                <option key={product} value={product}>
+                  {product}
+                </option>
               ))}
             </select>
           </label>
           <label>
             <span>Company</span>
-            <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+            <select
+              value={companyFilter}
+              onChange={(event) => setCompanyFilter(event.target.value)}
+            >
               <option value="all">All companies</option>
               {companyOptions.map((company) => (
-                <option key={company} value={company}>{company}</option>
+                <option key={company} value={company}>
+                  {company}
+                </option>
               ))}
             </select>
           </label>
           <label>
             <span>From date</span>
-            <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+            />
           </label>
           <label>
             <span>To date</span>
-            <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+            />
           </label>
         </div>
         {hasActiveFilters && (
-          <button type="button" className="payment-pending-clear-btn" onClick={clearFilters}>
+          <button
+            type="button"
+            className="payment-pending-clear-btn"
+            onClick={clearFilters}
+          >
             Clear filters
           </button>
         )}
@@ -171,51 +212,70 @@ export default function PaymentApproval() {
 
       <div className="payment-approval-card">
         {loading ? (
-          <div className="payment-approval-empty">Loading payment approvals...</div>
+          <div className="payment-approval-empty">
+            Loading payment approvals...
+          </div>
         ) : filteredPayments.length === 0 ? (
           <div className="payment-approval-empty">
-            {hasActiveFilters ? "No saved payments match the current filters." : "No saved payments found."}
+            {hasActiveFilters
+              ? "No saved payments match the current filters."
+              : "No saved payments found."}
           </div>
         ) : (
           <div className="payment-approval-table-wrap">
             <table className="payment-approval-table">
               <thead>
                 <tr>
-                  <th>Customer</th>
+                  <th>Payment Date</th>
                   <th>Company</th>
                   <th>Product</th>
-                  <th>Payment Date</th>
-                  <th className="payment-approval-amount-column">Revenue Amount</th>
-                  <th className="payment-approval-amount-column">Payment Amount</th>
-                  <th>Payment Type</th>
+                  <th className="payment-approval-amount-column">
+                    Payment Amount
+                  </th>
                   <th className="payment-approval-amount-column">Remaining</th>
+                  <th>Payment Type</th>
                   <th>Status / Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayments.map((payment) => (
                   <tr key={payment.id}>
-                    <td>{payment.customer_name || "-"}</td>
+                    <td>{formatDate(payment.payment_date)}</td>
                     <td>{payment.company_name || "-"}</td>
                     <td>{getPaymentProduct(payment)}</td>
-                    <td>{formatDate(payment.payment_date)}</td>
-                    <td className="payment-approval-revenue payment-approval-amount-column">{formatAmount(payment.revenue_amount)}</td>
-                    <td className="payment-approval-amount-column">{formatAmount(payment.payment_amount)}</td>
-                    <td>{payment.payment_type === "full" ? "Full Payment" : "Installment"}</td>
-                    <td className="payment-approval-balance payment-approval-amount-column">{formatAmount(payment.remaining_balance)}</td>
+                    <td className="payment-approval-payment payment-approval-amount-column">
+                      {formatAmount(payment.payment_amount)}
+                    </td>
+
+                    <td className="payment-approval-balance payment-approval-amount-column">
+                      {formatAmount(payment.remaining_balance)}
+                    </td>
+
                     <td>
-                      {!canMarkReceived || payment.approval_status !== "Pending" ? (
-                        <span className={payment.approval_status === "Received" ? "payment-status received" : "payment-status pending"}>
+                      {payment.payment_type === "full"
+                        ? "Full Payment"
+                        : "Installment"}
+                    </td>
+                    <td>
+                      {!canMarkReceived ||
+                      payment.approval_status !== "Pending" ? (
+                        <span
+                          className={
+                            payment.approval_status === "Received"
+                              ? "payment-status received"
+                              : "payment-status pending"
+                          }
+                        >
                           {payment.approval_status || "Pending"}
                         </span>
                       ) : (
                         <button
                           type="button"
-                          className="payment-received-btn"
+                          className="payment-approval-action-btn"
                           onClick={() => markReceived(payment.id)}
                           disabled={receivedId === payment.id}
                         >
-                          {receivedId === payment.id ? "Saving..." : "Received"}
+                          {receivedId === payment.id ? "Approving..." : "Approval"}
                         </button>
                       )}
                     </td>

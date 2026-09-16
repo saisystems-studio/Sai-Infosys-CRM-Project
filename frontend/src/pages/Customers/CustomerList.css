@@ -283,14 +283,6 @@
     font-weight: 400;
 }
 
-/* Address column - compact */
-.address-cell {
-    max-width: 150px;
-    word-wrap: break-word;
-    white-space: normal;
-    font-size: 0.75rem;
-}
-
 /* ---- Loading State ---- */
 .loading-shimmer {
     padding: 30px 20px;
@@ -550,9 +542,6 @@
         font-size: 0.75rem;
     }
 
-    .address-cell {
-        max-width: 80px;
-    }
 }
 
 @media (max-width: 480px) {
@@ -601,9 +590,6 @@
         font-size: 0.65rem;
     }
 
-    .address-cell {
-        max-width: 60px;
-    }
 }
 
 /* ---- Print Styles ---- */

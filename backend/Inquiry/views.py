@@ -169,7 +169,13 @@ class InquiryViewSet(
         ).values("Id")[:1]
         return (
             PaymentDetail.objects
-            .select_related("Inquiry_Product__Inquiry_Id__Customer_Id")
+            .select_related(
+                "Inquiry_Product__Inquiry_Id__Customer_Id",
+                "Inquiry_Product__Inquiry_Id__Resource_Id",
+            )
+            .prefetch_related(
+                "Inquiry_Product__Inquiry_Id__task_progress__Resource_Id",
+            )
             .annotate(
                 product_invoice_amount=Coalesce(
                     F("Inquiry_Product__Invoice_Amount"),
@@ -392,8 +398,10 @@ class InquiryViewSet(
 
         if has_full_access(request.user, staff):
             # Admin/Super Admin: View ALL inquiries
-            inquiries = self.get_queryset().exclude(
-                Status_Id__status_type_name__iexact="Payment Pending"
+            inquiries = (
+                self.get_queryset()
+                .exclude(Status_Id__status_type_name__iexact="Payment Pending")
+                .exclude(Status_Id__status_type_name__iexact="Completed")
             )
             serializer = InquiryListSerializer(
                 inquiries,
@@ -415,6 +423,7 @@ class InquiryViewSet(
             self.get_queryset()
             .filter(Resource_Id=staff.Id)
             .exclude(Status_Id__status_type_name__iexact="Payment Pending")
+            .exclude(Status_Id__status_type_name__iexact="Completed")
             .order_by(
                 "Shedule_Date",
                 "-Created_On"
@@ -439,11 +448,11 @@ class InquiryViewSet(
     )
     def completed_inquiry_report(self, request):
         staff = get_staff(request.user)
-        # Payment Pending is a terminal task outcome too: the assigned staff
-        # member has completed their work even though payment is still due.
+        # Payment Pending means the assigned task is complete while its
+        # collection remains outstanding, so it belongs in this task report.
         inquiries = self.get_queryset().filter(
             Q(Status_Id__status_type_name__iexact="Completed")
-            | Q(Status_Id__status_type_name__iexact="Payment Pending")
+            | Q(Status_Id__status_type_name__iexact="Payment Pending"),
         )
         if not has_full_access(request.user, staff):
             if staff is None:

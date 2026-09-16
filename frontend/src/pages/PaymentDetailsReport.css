@@ -2,6 +2,75 @@
     background: linear-gradient(120deg, #334e68, #5657df)
 }
 
+.payment-details-header-amount {
+    display: grid;
+    gap: 3px;
+    min-width: 220px;
+    margin-left: auto;
+    margin-right: 18px;
+    padding: 8px 20px;
+    border-left: 1px solid rgba(255, 255, 255, .24);
+    border-right: 1px solid rgba(255, 255, 255, .24);
+    color: #fff;
+    text-align: center;
+}
+
+.payment-details-header-amount span {
+    color: #c7d8ff;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.payment-details-header-amount strong {
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+}
+
+.payment-details-header-amount small {
+    color: #e1e7ff;
+    font-size: 9px;
+}
+
+.payment-details-staff-filter {
+    max-width: 150px;
+}
+
+/* Keep the payment report controls aligned instead of letting a flex row
+   compress the search and staff fields at desktop widths. */
+.payment-details-report .completed-report-filters {
+    display: grid;
+    grid-template-columns:
+        minmax(130px, 1.45fr)
+        128px
+        118px
+        minmax(145px, 1.35fr)
+        120px
+        118px
+        118px
+        auto;
+    align-items: end;
+    gap: 8px;
+}
+
+.payment-details-report .completed-report-filters label,
+.payment-details-report .payment-details-staff-filter {
+    min-width: 0;
+    max-width: none;
+}
+
+.payment-details-report .completed-report-filters input,
+.payment-details-report .completed-report-filters select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.payment-details-report .completed-report-search {
+    min-width: 0;
+}
+
 .payment-details-avatar {
     background: #e7e7ff;
     color: #4f46e5
@@ -101,6 +170,34 @@
 @media (max-width:640px) {
     .payment-details-summary {
         grid-template-columns: 1fr
+    }
+}
+
+@media (max-width:760px) {
+    .payment-details-header-amount {
+        min-width: 0;
+        margin-right: 8px;
+        padding: 7px 10px;
+    }
+}
+
+@media (max-width:1180px) {
+    .payment-details-report .completed-report-filters {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .payment-details-report .completed-report-search {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width:700px) {
+    .payment-details-report .completed-report-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .payment-details-report .completed-report-search {
+        grid-column: 1 / -1;
     }
 }
 

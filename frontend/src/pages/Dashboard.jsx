@@ -1249,21 +1249,25 @@ function Dashboard() {
                         key={inquiry.id}
                         onClick={() => handleViewScheduleDetail(inquiry.id)}
                       >
-                        <span className="dashboard-inquiry-date">
-                          {inquiry.schedule_date || "No date"}
-                        </span>
-                        <div className="dashboard-inquiry-main">
+                        <div className="dashboard-inquiry-date">
+                          <span>Schedule date</span>
+                          <strong>{inquiry.schedule_date || "No date"}</strong>
+                        </div>
+                        <div className="dashboard-inquiry-company">
                           <strong>
                             {inquiry.company_name || "Unknown company"}
                           </strong>
                           <small className="dashboard-inquiry-customer">
                             {inquiry.customer_name || "Unknown customer"}
                           </small>
+                        </div>
+                        <div className="dashboard-inquiry-assignee">
+                          <span>{isAdmin ? "Assigned to" : "Resource"}</span>
                           <small>
-                            {isAdmin
-                              ? `Assigned to ${inquiry.resource_name || "Unassigned"}`
-                              : inquiry.resource_name || "Unassigned"}
+                            {inquiry.resource_name || "Unassigned"}
                           </small>
+                        </div>
+                        <div className="dashboard-inquiry-main">
                           {inquiry.products?.length ? (
                             <div className="dashboard-inquiry-products">
                               {inquiry.products.map((product) => (

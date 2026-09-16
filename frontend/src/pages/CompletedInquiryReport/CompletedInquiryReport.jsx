@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   filterCompletedInquiryReport,
+  getCompactCompletedDateTime,
   getCompletedReportDateRange,
   getLatestCompletedTask,
 } from "./completedInquiryReport";
@@ -13,13 +14,6 @@ const emptyFilters = {
   ...getCompletedReportDateRange("today"),
   staffId: "",
   product: "",
-};
-
-const formatDateTime = (value) => {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
-  });
 };
 
 const formatDuration = (task) => {
@@ -100,7 +94,7 @@ export default function CompletedInquiryReport({ onViewDetails }) {
           <h1>Completed Inquiry Report</h1>
           <p>Latest completed-task update, including payment-pending work, for each inquiry in the selected period.</p>
         </div>
-        <div className="completed-report-total"><strong>{reportRows.length}</strong><span>Completed inquiries</span></div>
+        <div className="completed-report-total"><strong>{reportRows.length}</strong><span>Completed task inquiries</span></div>
       </header>
 
       <div className="completed-report-filters">
@@ -118,7 +112,7 @@ export default function CompletedInquiryReport({ onViewDetails }) {
         <div className="completed-report-table-wrap">
             <div className="completed-report-table" role="table" aria-label="Completed inquiry details">
             <div className="completed-report-table-head" role="row">
-              <span role="columnheader">Inquiry</span><span role="columnheader">Company</span><span role="columnheader">Status</span><span role="columnheader">Staff</span><span role="columnheader">Completed at</span><span role="columnheader">Last update</span><span role="columnheader">Duration</span><span role="columnheader">Products</span><span role="columnheader">View</span>
+              <span role="columnheader">Inquiry</span><span role="columnheader">Company</span><span role="columnheader">Status</span><span role="columnheader">Staff</span><span role="columnheader">Done</span><span role="columnheader">Last update</span><span role="columnheader">Duration</span><span role="columnheader">Products</span><span role="columnheader">View</span>
             </div>
             {reportRows.map(({ inquiry, task }) => (
               <div className="completed-report-table-row" role="row" key={inquiry.id}>
@@ -126,7 +120,7 @@ export default function CompletedInquiryReport({ onViewDetails }) {
                 <span role="cell" data-label="Company" className="completed-report-customer-cell"><strong>{inquiry.company_name || "No company name"}</strong></span>
                 <span role="cell" data-label="Status"><em className={`completed-report-status ${inquiry.status_name === "Payment Pending" ? "completed-report-status-pending" : ""}`}>{inquiry.status_name || "Completed"}</em></span>
                 <span role="cell" data-label="Staff">{task.resource_name || inquiry.resource_name || "Unassigned"}</span>
-                <span role="cell" data-label="Completed at">{formatDateTime(task.end_time)}</span>
+                <span role="cell" data-label="Done">{getCompactCompletedDateTime(task.end_time)}</span>
                 <span role="cell" data-label="Last update" className="completed-report-notes">{task.progress_notes || "No notes recorded"}</span>
                 <span role="cell" data-label="Duration" className="completed-report-duration">{formatDuration(task)}</span>
                 <span role="cell" data-label="Products" className="completed-report-products-cell">{(inquiry.products || []).length ? inquiry.products.map((item) => <em key={item.id}>{productName(item)}</em>) : "Not specified"}</span>

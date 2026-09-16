@@ -177,7 +177,64 @@ form textarea[readonly]:focus {
     min-width: 0;
 }
 
-.customer label>div button {
+.lookup-group {
+    position: relative;
+}
+
+.customer-match-list {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 5px);
+    right: 0;
+    left: 0;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgb(15 23 42 / 0.15);
+}
+
+.customer-match-list button,
+.customer-match-status {
+    display: flex;
+    width: 100%;
+    padding: 9px 11px;
+    border: 0;
+    border-bottom: 1px solid #eef2f7;
+    background: #fff;
+    color: var(--text-main);
+    text-align: left;
+}
+
+.customer-match-list button {
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+}
+
+.customer-match-list button:last-child {
+    border-bottom: 0;
+}
+
+.customer-match-list button:hover {
+    background: #eef2ff;
+}
+
+.customer-match-list button strong {
+    font-size: 13px;
+}
+
+.customer-match-list button span,
+.customer-match-status {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.customer-match-status {
+    border-bottom: 0;
+}
+
+.customer label>.lookup-group>button {
     padding: 0 20px;
     border: 1px solid #c7d2fe;
     background: #eef2ff;
@@ -190,7 +247,7 @@ form textarea[readonly]:focus {
     white-space: nowrap;
 }
 
-.customer label>div button:hover {
+.customer label>.lookup-group>button:hover {
     background: #e0e7ff;
     border-color: #a5b4fc;
 }
@@ -797,7 +854,7 @@ form textarea {
     gap: 8px;
 }
 
-.customer label>div button {
+.customer label>.lookup-group>button {
     min-height: 38px;
     width: 38px;
     min-width: 38px;

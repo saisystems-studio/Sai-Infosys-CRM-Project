@@ -2,15 +2,17 @@ const normalize = (value) => String(value || "").trim().toLowerCase();
 
 export const getPaymentProduct = (payment) => payment?.product_name || payment?.requirement || "Product";
 export const getPaymentCompany = (payment) => payment?.company_name || "Unassigned Company";
+export const getPaymentStaff = (payment) => payment?.staff_name || "Unassigned";
 
 export function filterPaymentDetails(payments = [], filters = {}) {
   const search = normalize(filters.search);
   return payments.filter((payment) => {
     const paymentDate = String(payment.created_on || payment.payment_date || "").slice(0, 10);
-    const searchable = [payment.customer_name, getPaymentCompany(payment), getPaymentProduct(payment)].map(normalize).join(" ");
+    const searchable = [payment.customer_name, getPaymentCompany(payment), getPaymentProduct(payment), getPaymentStaff(payment)].map(normalize).join(" ");
     return (!search || searchable.includes(search)) &&
       (!filters.company || getPaymentCompany(payment) === filters.company) &&
       (!filters.product || getPaymentProduct(payment) === filters.product) &&
+      (!filters.staff || getPaymentStaff(payment) === filters.staff) &&
       (!filters.fromDate || paymentDate >= filters.fromDate) &&
       (!filters.toDate || paymentDate <= filters.toDate);
   });

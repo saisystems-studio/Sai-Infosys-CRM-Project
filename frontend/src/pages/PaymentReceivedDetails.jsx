@@ -4,6 +4,7 @@ import {
   getPaymentCardSummary,
   getPaymentCompany,
   getPaymentProduct,
+  getPaymentStaff,
 } from "./paymentDetailsReport";
 import { getCompletedReportDateRange } from "./CompletedInquiryReport/completedInquiryReport";
 import "./CompletedInquiryReport/CompletedInquiryReport.css";
@@ -14,6 +15,7 @@ const emptyFilters = {
   search: "",
   product: "",
   company: "",
+  staff: "",
   fromDate: "",
   toDate: "",
 };
@@ -33,6 +35,7 @@ const formatDate = (value) =>
 
 export default function PaymentReceivedDetails() {
   const [payments, setPayments] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [datePreset, setDatePreset] = useState("custom");
   const [loading, setLoading] = useState(true);
@@ -81,6 +84,19 @@ export default function PaymentReceivedDetails() {
       .finally(() => {
         if (active) setLoading(false);
       });
+
+    fetch(`${API_BASE}/inquiries/resources/`, { headers: headers() })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load staff.");
+        return response.json();
+      })
+      .then((data) => {
+        if (active) setStaff(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        // Payment data stays usable if the optional staff list is unavailable.
+      });
+
     return () => {
       active = false;
     };
@@ -92,6 +108,12 @@ export default function PaymentReceivedDetails() {
   );
   const productOptions = [...new Set(payments.map(getPaymentProduct))].sort();
   const companyOptions = [...new Set(payments.map(getPaymentCompany))].sort();
+  const staffOptions = [
+    ...new Set([
+      ...staff.map((member) => member.Full_Name).filter(Boolean),
+      ...payments.map(getPaymentStaff),
+    ]),
+  ].sort();
   const summaryStats = useMemo(() => {
     const totalPaidAmount = filteredPayments.reduce(
       (sum, payment) =>
@@ -131,6 +153,11 @@ export default function PaymentReceivedDetails() {
           <span className="completed-report-eyebrow">Finance reports</span>
           <h1>Payment Received Report</h1>
           <p>A clear record of customer payments confirmed as received.</p>
+        </div>
+        <div className="payment-details-header-amount">
+          <span>Total paid amount</span>
+          <strong>{formatAmount(summaryStats.totalPaidAmount)}</strong>
+          <small>For the selected filters</small>
         </div>
         <div className="completed-report-total">
           <strong>{filteredPayments.length}</strong>
@@ -189,6 +216,20 @@ export default function PaymentReceivedDetails() {
           >
             <option value="">All companies</option>
             {companyOptions.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        </label>
+        <label className="payment-details-staff-filter">
+          <span>Staff</span>
+          <select
+            value={filters.staff}
+            onChange={(event) =>
+              setFilters({ ...filters, staff: event.target.value })
+            }
+          >
+            <option value="">All staff</option>
+            {staffOptions.map((value) => (
               <option key={value}>{value}</option>
             ))}
           </select>

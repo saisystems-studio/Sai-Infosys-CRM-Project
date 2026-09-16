@@ -12,6 +12,25 @@ const toDateValue = (value) => {
   return `${year}-${month}-${day}`;
 };
 
+export function getCompactCompletedDateTime(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return "—";
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(date).reduce((result, part) => {
+    result[part.type] = part.value;
+    return result;
+  }, {});
+
+  return `${parts.day} ${parts.month}, ${parts.hour}:${parts.minute} ${parts.dayPeriod.toUpperCase()}`;
+}
+
 export function getCompletedReportDateRange(preset, today = new Date()) {
   const current = new Date(today);
   current.setHours(0, 0, 0, 0);

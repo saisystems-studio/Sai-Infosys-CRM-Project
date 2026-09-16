@@ -30,9 +30,14 @@ export default function ProductBilling() {
   const [products, setProducts] = useState([]);
   const [productLines, setProductLines] = useState([newProductLine()]);
   const [licenseTypes, setLicenseTypes] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerMatches, setCustomerMatches] = useState([]);
+  const [showCustomerMatches, setShowCustomerMatches] = useState(false);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const activeContactRef = useRef("");
+  const customerSearchTimerRef = useRef();
+  const activeCustomerSearchRef = useRef("");
 
   const headers = {
     Authorization: `Bearer ${localStorage.getItem("crm_access_token")}`,
@@ -61,57 +66,62 @@ export default function ProductBilling() {
     return () => window.clearTimeout(timer);
   }, [message]);
 
-  // Customer Lookup
-  const lookup = async (contactNumber) => {
+  const clearSelectedCustomer = () => setForm((current) => ({
+    ...current,
+    contact_number: "", customer_id: "", customer_name: "", company_name: "",
+    license_details: "", license_options: [], license_id: "", is_new_license: false,
+    license_type_id: "", license_admin_id: "", license_expiry_date: "",
+  }));
+
+  const handleCustomerSearch = (event) => {
+    const query = event.target.value;
+    activeCustomerSearchRef.current = query;
+    setCustomerSearch(query);
     setError("");
-    try {
-      const r = await axios.get(`${API}/product-billing/customer-lookup/`, {
-        headers,
-        params: { contact_number: contactNumber },
-      });
-      setForm((current) =>
-        current.contact_number === contactNumber
-          ? { ...current, ...r.data }
-          : current,
-      );
-    } catch (e) {
-      setForm((current) =>
-        current.contact_number === contactNumber
-          ? { ...current, customer_id: "" }
-          : current,
-      );
-      if (activeContactRef.current === contactNumber) {
-        setError(e.response?.data?.detail || "Customer lookup failed.");
-      }
+    clearSelectedCustomer();
+    window.clearTimeout(customerSearchTimerRef.current);
+
+    if (query.trim().length < 2) {
+      setCustomerMatches([]);
+      setShowCustomerMatches(false);
+      return;
     }
+
+    setShowCustomerMatches(true);
+    customerSearchTimerRef.current = window.setTimeout(async () => {
+      setIsSearchingCustomers(true);
+      try {
+        const response = await axios.get(`${API}/product-billing/customer-lookup/`, {
+          headers,
+          params: { query: query.trim() },
+        });
+        if (activeCustomerSearchRef.current === query) {
+          setCustomerMatches(response.data.results || []);
+        }
+      } catch {
+        if (activeCustomerSearchRef.current === query) setCustomerMatches([]);
+      } finally {
+        if (activeCustomerSearchRef.current === query) setIsSearchingCustomers(false);
+      }
+    }, 250);
   };
 
-  const handleContactNumberChange = (event) => {
-    const contactNumber = event.target.value.replace(/\D/g, "").slice(0, 10);
-    activeContactRef.current = contactNumber;
+  const selectCustomer = async (customer) => {
+    window.clearTimeout(customerSearchTimerRef.current);
+    activeCustomerSearchRef.current = customer.contact_number;
+    setCustomerSearch(`${customer.company_name || customer.customer_name} — ${customer.contact_number}`);
+    setCustomerMatches([]);
+    setShowCustomerMatches(false);
+    setIsSearchingCustomers(false);
     setError("");
-
-    setForm((current) => ({
-      ...current,
-      contact_number: contactNumber,
-      ...(contactNumber.length < 10
-        ? {
-            customer_id: "",
-            customer_name: "",
-            company_name: "",
-            license_details: "",
-            license_options: [],
-            license_id: "",
-            is_new_license: false,
-            license_type_id: "",
-            license_admin_id: "",
-            license_expiry_date: "",
-          }
-        : {}),
-    }));
-
-    if (contactNumber.length === 10) {
-      lookup(contactNumber);
+    try {
+      const response = await axios.get(`${API}/product-billing/customer-lookup/`, {
+        headers,
+        params: { contact_number: customer.contact_number },
+      });
+      setForm((current) => ({ ...current, contact_number: customer.contact_number, ...response.data }));
+    } catch (e) {
+      setError(e.response?.data?.detail || "Unable to load the selected customer.");
     }
   };
 
@@ -130,6 +140,9 @@ export default function ProductBilling() {
       );
       setMessage(r.data.detail);
       setForm(empty);
+      setCustomerSearch("");
+      setCustomerMatches([]);
+      setShowCustomerMatches(false);
       setProductLines([newProductLine()]);
     } catch (e) {
       setError(e.response?.data?.detail || "Unable to save the product bill.");
@@ -176,14 +189,27 @@ export default function ProductBilling() {
           <h2>Customer details</h2>
           <div className="grid customer">
             <label>
-              <span>Customer contact number</span>
+              <span>Search customer</span>
               <div className="lookup-group">
                 <input
                   required
-                  value={form.contact_number}
-                  onChange={handleContactNumberChange}
-                  placeholder="e.g. 9876543210"
+                  value={customerSearch}
+                  onChange={handleCustomerSearch}
+                  onFocus={() => customerSearch.trim().length >= 2 && setShowCustomerMatches(true)}
+                  placeholder="Search phone number or company name"
+                  autoComplete="off"
                 />
+                {showCustomerMatches && (
+                  <div className="customer-match-list" role="listbox" aria-label="Matching customers">
+                    {isSearchingCustomers ? <div className="customer-match-status">Searching…</div>
+                      : customerMatches.length ? customerMatches.map((customer) => (
+                        <button type="button" key={`${customer.customer_id}-${customer.contact_number}`} onMouseDown={() => selectCustomer(customer)} role="option">
+                          <strong>{customer.company_name || customer.customer_name}</strong>
+                          <span>{customer.customer_name} · {customer.contact_number}</span>
+                        </button>
+                      )) : <div className="customer-match-status">No customers found.</div>}
+                  </div>
+                )}
               </div>
             </label>
             <Field label="Customer name" value={form.customer_name} readOnly />
@@ -319,7 +345,7 @@ export default function ProductBilling() {
           <footer>
             <button
               type="button"
-              onClick={() => { setForm(empty); setProductLines([newProductLine()]); }}
+              onClick={() => { setForm(empty); setCustomerSearch(""); setCustomerMatches([]); setShowCustomerMatches(false); setProductLines([newProductLine()]); }}
               className="btn-reset"
             >
               Reset

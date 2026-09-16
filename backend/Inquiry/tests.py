@@ -430,6 +430,7 @@ class PaymentApprovalAccessTests(TestCase):
         self.assertEqual([item["id"] for item in response.data], [received.Id])
         self.assertEqual(response.data[0]["payment_amount"], "4.00")
         self.assertEqual(response.data[0]["payment_type"], "installment")
+        self.assertEqual(response.data[0]["staff_name"], "Unassigned")
 
     def test_super_admin_can_record_a_payment_from_pending(self):
         """Fails if Super Admin cannot record a valid installment payment."""

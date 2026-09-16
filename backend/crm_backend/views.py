@@ -515,8 +515,32 @@ def product_billing_customer_lookup(request):
     denied = _require_billing_access(request)
     if denied:
         return denied
+    search_query = str(request.query_params.get("query", "")).strip()
+    contacts = CustomerContact.objects.select_related("customer").prefetch_related(
+        "customer__licenses__license_type",
+    )
+
+    # Autocomplete searches by either a saved phone number or the company name.
+    # Keep the contact_number lookup below for callers that need one exact match.
+    if search_query:
+        matches = contacts.filter(
+            Q(contact_number__icontains=search_query)
+            | Q(customer__company_name__icontains=search_query),
+        ).order_by("customer__company_name", "contact_number")[:10]
+        return Response({
+            "results": [
+                {
+                    "customer_id": contact.customer_id,
+                    "contact_number": contact.contact_number or "",
+                    "customer_name": contact.customer.customer_name or "",
+                    "company_name": contact.customer.company_name or "",
+                }
+                for contact in matches
+            ],
+        })
+
     number = str(request.query_params.get("contact_number", "")).strip()
-    contact = CustomerContact.objects.select_related("customer").prefetch_related("customer__licenses__license_type").filter(contact_number=number).first()
+    contact = contacts.filter(contact_number=number).first()
     if not contact:
         return Response({"detail": "Customer not found for this contact number."}, status=status.HTTP_404_NOT_FOUND)
     licenses = [

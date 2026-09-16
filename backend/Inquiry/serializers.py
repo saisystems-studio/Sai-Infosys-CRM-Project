@@ -142,6 +142,7 @@ class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField(source="Inquiry_Product_id", read_only=True)
     customer_name = serializers.CharField(source="Inquiry_Product.Inquiry_Id.Customer_Id.customer_name")
     company_name = serializers.CharField(source="Inquiry_Product.Inquiry_Id.Customer_Id.company_name", allow_null=True)
+    staff_name = serializers.SerializerMethodField()
     product_name = serializers.SerializerMethodField()
     requirement = serializers.CharField(source="Inquiry_Product.Requirment", allow_null=True)
     invoice_amount = serializers.DecimalField(
@@ -166,7 +167,7 @@ class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentDetail
         fields = [
-            "id", "product_id", "customer_name", "company_name", "product_name",
+            "id", "product_id", "customer_name", "company_name", "staff_name", "product_name",
             "requirement", "invoice_amount", "revenue_amount", "payment_amount", "payment_type", "payment_date",
             "total_paid", "remaining_balance", "payment_status", "is_latest_payment",
             "approval_status", "approved_by", "approved_on",
@@ -176,6 +177,18 @@ class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
         if obj.Inquiry_Product and obj.Inquiry_Product.ProductType_Id:
             return obj.Inquiry_Product.ProductType_Id.product_type_name or "Product"
         return "Product"
+
+    def get_staff_name(self, obj):
+        inquiry = obj.Inquiry_Product.Inquiry_Id
+        resource = inquiry.Resource_Id
+        if resource:
+            return resource.Full_Name
+
+        # Older inquiries may not have a direct assignee. In that case, the
+        # latest task progress identifies the staff member who handled it.
+        latest_progress = next(iter(inquiry.task_progress.all()), None)
+        resource = latest_progress.Resource_Id if latest_progress else None
+        return resource.Full_Name if resource else "Unassigned"
 
 class PaymentRecordSerializer(serializers.Serializer):
     amount = serializers.DecimalField(

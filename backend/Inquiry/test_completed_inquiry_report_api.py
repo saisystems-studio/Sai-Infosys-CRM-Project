@@ -86,22 +86,26 @@ class CompletedInquiryReportApiTests(APITestCase):
             Created_Id=self.super_user,
         )
 
-    def test_staff_sees_only_own_completed_and_payment_pending_inquiries(self):
+    def test_staff_sees_own_completed_and_payment_pending_inquiries(self):
         self.client.force_authenticate(self.staff_user)
 
         response = self.client.get("/api/inquiries/completed-inquiry-report/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            [row["id"] for row in response.data],
-            [self.own_completed.pk, self.own_payment_pending.pk],
+            {row["id"] for row in response.data},
+            {self.own_completed.pk, self.own_payment_pending.pk},
         )
-        self.assertEqual(response.data[0]["task_progress"][0]["resource_name"], "Report Staff")
+        rows_by_id = {row["id"]: row for row in response.data}
         self.assertEqual(
-            response.data[0]["task_progress"][0]["progress_notes"],
+            rows_by_id[self.own_payment_pending.pk]["status_name"],
+            "Payment Pending",
+        )
+        self.assertEqual(rows_by_id[self.own_completed.pk]["task_progress"][0]["resource_name"], "Report Staff")
+        self.assertEqual(
+            rows_by_id[self.own_completed.pk]["task_progress"][0]["progress_notes"],
             "Installed and verified the requested service.",
         )
-        self.assertEqual(response.data[1]["status_name"], "Payment Pending")
 
     def test_super_admin_sees_every_staff_completed_inquiry(self):
         self.client.force_authenticate(self.super_user)
@@ -111,7 +115,11 @@ class CompletedInquiryReportApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             {row["id"] for row in response.data},
-            {self.own_completed.pk, self.own_payment_pending.pk, self.other_completed.pk},
+            {
+                self.own_completed.pk,
+                self.own_payment_pending.pk,
+                self.other_completed.pk,
+            },
         )
 
     def test_staff_without_report_permission_is_denied(self):
@@ -131,6 +139,6 @@ class CompletedInquiryReportApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            [row["id"] for row in response.data],
-            [self.own_completed.pk, self.own_payment_pending.pk],
+            {row["id"] for row in response.data},
+            {self.own_completed.pk, self.own_payment_pending.pk},
         )

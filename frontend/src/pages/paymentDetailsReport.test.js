@@ -24,6 +24,15 @@ test("payment report filters by search, company, product, and date", () => {
   assert.deepEqual(filterPaymentDetails([payment], { search: "missing" }), []);
 });
 
+test("payment report filters by assigned staff", () => {
+  const assignedPayment = { ...payment, staff_name: "Asha Patel" };
+  assert.deepEqual(
+    filterPaymentDetails([assignedPayment], { staff: "Asha Patel" }),
+    [assignedPayment],
+  );
+  assert.deepEqual(filterPaymentDetails([assignedPayment], { staff: "Other" }), []);
+});
+
 test("payment card summary exposes paid and revenue values", () => {
   assert.deepEqual(getPaymentCardSummary(payment), {
     product: "Tally Support",

@@ -91,6 +91,22 @@ class ProductBillingCustomerLookupTests(TestCase):
             }],
         )
 
+    def test_lookup_searches_by_phone_or_company_name(self):
+        """Autocomplete results include the contact needed to create a bill."""
+        for query in ("9876", "billing company"):
+            response = self.client.get(
+                "/api/product-billing/customer-lookup/",
+                {"query": query},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["results"], [{
+                "customer_id": self.customer.id,
+                "contact_number": "9876543210",
+                "customer_name": "Billing Customer",
+                "company_name": "Billing Company",
+            }])
+
     def test_saving_same_license_type_updates_the_existing_expiry_date(self):
         """Fails if a renewal with the same type leaves the stored expiry unchanged."""
         response = self.save_bill(

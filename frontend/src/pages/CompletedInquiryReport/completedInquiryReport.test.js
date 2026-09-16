@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   filterCompletedInquiryReport,
   getCompletedReportDateRange,
+  getCompactCompletedDateTime,
   getLatestCompletedTask,
   getCompletedTaskSummary,
 } from "./completedInquiryReport.js";
@@ -95,4 +96,11 @@ test("report date presets create inclusive task completion periods", () => {
   assert.deepEqual(getCompletedReportDateRange("last-month", today), {
     fromDate: "2026-08-01", toDate: "2026-08-31",
   });
+});
+
+test("compact completion timestamp omits the year and uses a short month", () => {
+  assert.equal(
+    getCompactCompletedDateTime("2026-09-16T05:27:00Z"),
+    "16 Sep, 10:57 AM",
+  );
 });

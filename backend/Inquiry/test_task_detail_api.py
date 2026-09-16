@@ -13,7 +13,7 @@ from Inquiry.models import (
     PaymentDetail,
     TaskStatus,
 )
-from masters.models import MenuMaster, ProductTypeMaster
+from masters.models import MenuMaster, ProductTypeMaster, StatusTypeMaster
 from staff.models import StaffDetails, StaffMenuPermission
 
 
@@ -223,6 +223,20 @@ class InquiryTaskDetailApiTests(APITestCase):
             response.data[0]["active_task_started_at"],
             "2026-08-27T13:00:00",
         )
+
+    def test_schedule_excludes_completed_inquiries(self):
+        completed_status = StatusTypeMaster.objects.create(
+            status_type_name="Completed",
+            created_by=self.assigned_user,
+        )
+        self.inquiry.Status_Id = completed_status
+        self.inquiry.save(update_fields=["Status_Id"])
+        self.client.force_authenticate(self.assigned_user)
+
+        response = self.client.get("/api/inquiries/schedule/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
 
     def test_django_staff_flag_does_not_grant_all_schedule_access(self):
         self.assigned_user.is_staff = True

@@ -359,7 +359,6 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
               <col className="name-column" />
               <col className="contact-column" />
               <col className="email-column" />
-              <col className="address-column" />
               <col className="gst-column" />
               <col className="actions-column" />
             </colgroup>
@@ -370,7 +369,6 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
                 <th>Customer Name</th>
                 <th>Contact Number</th>
                 <th>Email</th>
-                <th>Address</th>
                 <th>GST Number</th>
                 <th className="action-column">Actions</th>
               </tr>
@@ -379,7 +377,7 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8">
+                  <td colSpan="7">
                     <div className="loading-shimmer">
                       <div className="spinner"></div>
                       <p>Loading customers...</p>
@@ -413,7 +411,6 @@ function CustomerList({ permissions = {}, onAddCustomer }) {
                       </span>
                     </td>
                     <td>{customer.email_id || "-"}</td>
-                    <td className="address-cell">{customer.address || "-"}</td>
                     <td>{customer.gst_number || "-"}</td>
                     <td className="action-column">
                       <div className="action-buttons">

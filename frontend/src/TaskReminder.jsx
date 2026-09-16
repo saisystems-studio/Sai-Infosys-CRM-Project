@@ -175,7 +175,9 @@ const TaskReminder = ({ onOpenInquiry }) => {
         <div className="task-reminder-icon" aria-hidden="true">🔔</div>
         <div className="task-reminder-content">
           <span className="task-reminder-label">Callback reminder</span>
-          <h2 id="task-reminder-title">{reminder.customer_name || "Customer inquiry"}</h2>
+          <h2 id="task-reminder-title">
+            {reminder.company_name || reminder.customer_name || "Customer inquiry"}
+          </h2>
           <p className="task-reminder-time">Call scheduled for {formatCallback(reminder.next_reschedule_at)}</p>
           <div className="task-reminder-details">
             <span><strong>Phone:</strong> {reminder.phone_number || "—"}</span>

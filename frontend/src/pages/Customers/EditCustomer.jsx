@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { getRequiredCustomerErrors } from "./customerValidation.js";
 import { getContactNumberError } from "./customerContacts.js";
-import { getLicenseErrors, prepareLicensesForPayload } from "./customerLicenses.js";
+import {
+  getLicenseErrors,
+  prepareLicensesForPayload,
+} from "./customerLicenses.js";
 import "./AddCustomer.css";
 import { createCustomerUpdatedHandler } from "./customerNavigation.js";
 
@@ -255,8 +258,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
       ),
     );
     const licenseIndex = licenses.findIndex((license) => license.id === id);
-    const errorField =
-      field === "tally_serial_number" ? "tally_serial" : field;
+    const errorField = field === "tally_serial_number" ? "tally_serial" : field;
     setErrors((prev) => {
       const next = { ...prev };
       delete next[`${errorField}_${licenseIndex}`];
@@ -320,7 +322,9 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
     });
 
     licenses.forEach((license, index) => {
-      for (const [field, message] of Object.entries(getLicenseErrors(license))) {
+      for (const [field, message] of Object.entries(
+        getLicenseErrors(license),
+      )) {
         newErrors[`${field}_${index}`] = message;
       }
     });
@@ -352,7 +356,9 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
       const payload = {
         ...customerData,
         contacts: contacts.map(({ id, _isExisting, ...rest }) => rest),
-        licenses: prepareLicensesForPayload(licenses.map(({ _isExisting, ...rest }) => rest)),
+        licenses: prepareLicensesForPayload(
+          licenses.map(({ _isExisting, ...rest }) => rest),
+        ),
       };
 
       await api.put(`customers/${customerId}/`, payload);
@@ -368,7 +374,11 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
       } else if (error.response?.data) {
         const errorData = error.response.data;
         if (typeof errorData === "object") {
-          const errorMessages = Object.values(errorData).flat().join("\n");
+          const collectMessages = (value) =>
+            value && typeof value === "object"
+              ? Object.values(value).flatMap(collectMessages)
+              : [String(value)];
+          const errorMessages = collectMessages(errorData).join("\n");
           setErrorMessage(`Error: ${errorMessages}`);
         } else {
           setErrorMessage(`Error: ${errorData}`);
@@ -482,7 +492,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                   placeholder="Enter company name"
                   className={`customer-input ${errors.company_name ? "error" : ""}`}
                 />
-              {errors.company_name && (
+                {errors.company_name && (
                   <span className="error-text">{errors.company_name}</span>
                 )}
               </div>
@@ -517,7 +527,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                     </option>
                   ))}
                 </select>
-              {errors.customer_type && (
+                {errors.customer_type && (
                   <span className="error-text">{errors.customer_type}</span>
                 )}
               </div>
@@ -609,7 +619,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                   placeholder="Enter GST number"
                   className={`customer-input ${errors.gst_number ? "error" : ""}`}
                 />
-              {errors.gst_number && (
+                {errors.gst_number && (
                   <span className="error-text">{errors.gst_number}</span>
                 )}
               </div>
@@ -649,7 +659,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                     addContact();
                   }}
                 >
-                  + Add Contact
+                  Add Contact
                 </button>
                 <span className="toggle-icon">
                   {sections.contacts ? "▲" : "▼"}
@@ -746,7 +756,7 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                     addLicense();
                   }}
                 >
-                  + Add License
+                  Add License
                 </button>
                 <span className="toggle-icon">
                   {sections.licenses ? "▲" : "▼"}
@@ -797,7 +807,9 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                       </div>
 
                       <div className="form-group">
-                        <label>License Type {license.tally_serial_number && "*"}</label>
+                        <label>
+                          License Type {license.tally_serial_number && "*"}
+                        </label>
                         <select
                           value={license.license_type}
                           onChange={(e) =>
@@ -816,13 +828,17 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                             </option>
                           ))}
                         </select>
-                      {errors[`license_type_${index}`] && (
-                          <span className="error-text">{errors[`license_type_${index}`]}</span>
+                        {errors[`license_type_${index}`] && (
+                          <span className="error-text">
+                            {errors[`license_type_${index}`]}
+                          </span>
                         )}
                       </div>
 
                       <div className="form-group">
-                        <label>Admin ID {license.tally_serial_number && "*"}</label>
+                        <label>
+                          Admin ID {license.tally_serial_number && "*"}
+                        </label>
                         <input
                           type="text"
                           value={license.admin_id}
@@ -836,13 +852,17 @@ export default function EditCustomer({ customerId, onClose, onUpdate }) {
                           placeholder="Enter admin ID"
                           className={`customer-input ${errors[`admin_id_${index}`] ? "error" : ""}`}
                         />
-                      {errors[`admin_id_${index}`] && (
-                          <span className="error-text">{errors[`admin_id_${index}`]}</span>
+                        {errors[`admin_id_${index}`] && (
+                          <span className="error-text">
+                            {errors[`admin_id_${index}`]}
+                          </span>
                         )}
                       </div>
 
                       <div className="form-group">
-                        <label>Expiry Date {license.tally_serial_number && "*"}</label>
+                        <label>
+                          Expiry Date {license.tally_serial_number && "*"}
+                        </label>
                         <input
                           type="date"
                           value={formatDate(license.expiry_date)}

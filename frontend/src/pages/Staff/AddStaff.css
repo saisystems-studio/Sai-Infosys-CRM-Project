@@ -1171,3 +1171,365 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Keep Add Staff's compact counters independent from dashboard statistic styles. */
+.permission-stats .stat-item {
+    position: static;
+    display: flex;
+    min-height: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.permission-stats .stat-item::before {
+    display: none;
+}
+
+.permission-stats .stat-number {
+    color: #1a2332;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.permission-stats .stat-label {
+    color: #6b7a8f;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Parent menus show a read-only summary aligned with the four permission columns. */
+.permission-indicator {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 24px;
+    padding: 3px 4px;
+    border: 1px solid #e5e9f0;
+    border-radius: 4px;
+    background: #f5f7fa;
+    color: #9aa3b2;
+    font-size: 9px;
+    cursor: default;
+}
+
+.permission-indicator.active {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.permission-indicator.partial {
+    border-color: #fdecc8;
+    background: #fef8e7;
+    color: #d97706;
+}
+
+.permission-indicator .indicator-label {
+    color: inherit;
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.permission-indicator .indicator-check {
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.permission-indicator .indicator-partial {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Visual refresh for the full Add Staff workspace. */
+.add-staff-page {
+    max-width: 1160px;
+    padding: 26px 28px 34px;
+    background: #f8fafc;
+}
+
+.add-staff-header {
+    margin-bottom: 20px;
+    padding: 20px 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: linear-gradient(115deg, #ffffff 0%, #f4f6ff 100%);
+    box-shadow: 0 6px 18px rgb(15 23 42 / 0.04);
+}
+
+.header-left h1 {
+    font-size: 26px;
+    letter-spacing: -0.02em;
+}
+
+.header-left p {
+    margin-top: 5px;
+    font-size: 13px;
+}
+
+.badge {
+    padding: 6px 15px;
+    box-shadow: 0 4px 10px rgb(37 99 235 / 0.2);
+}
+
+.staff-form-card {
+    margin-bottom: 18px;
+    border-color: #dfe6ef;
+    border-radius: 14px;
+    box-shadow: 0 5px 16px rgb(15 23 42 / 0.045);
+}
+
+.form-card-header {
+    padding: 16px 20px;
+    background: linear-gradient(90deg, #fbfcff, #f8fafc);
+}
+
+.form-card-icon {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 8px;
+    background: #eef2ff;
+    font-size: 15px;
+}
+
+.form-card-body {
+    padding: 22px 20px;
+}
+
+.staff-image-section {
+    gap: 14px;
+    margin-bottom: 20px;
+    padding: 14px;
+    border: 1px solid #e8edf4;
+    border-radius: 10px;
+    background: #fbfcfe;
+}
+
+.staff-image-preview {
+    width: 66px;
+    height: 66px;
+    background: #eef2ff;
+}
+
+.staff-document-upload {
+    min-width: min(360px, 48%);
+    padding: 11px 13px;
+    background: #fff;
+}
+
+.form-grid {
+    gap: 18px 20px;
+}
+
+.form-field {
+    gap: 7px;
+}
+
+.form-field label {
+    font-weight: 600;
+}
+
+.form-input {
+    min-height: 42px;
+    padding: 10px 13px;
+    border-radius: 8px;
+}
+
+.form-toggle-group {
+    margin-top: 20px;
+    padding-top: 18px;
+}
+
+.permission-card .form-card-header {
+    background: linear-gradient(90deg, #f5f7ff, #f8fafc);
+}
+
+.staff-form-actions {
+    position: static;
+    margin: 20px 0 0;
+    padding: 16px 0 4px;
+    border-top: 1px solid #e2e8f0;
+    background: transparent;
+}
+
+.cancel-staff-button,
+.save-staff-button {
+    min-height: 42px;
+    border-radius: 8px;
+}
+
+@media (max-width: 900px) {
+    .add-staff-page { padding: 18px; }
+    .staff-document-upload { min-width: 0; }
+}
+
+/* Four-step workflow inspired by the supplied Add Staff reference. */
+.header-active-toggle {
+    display: grid;
+    justify-items: end;
+    gap: 4px;
+}
+
+.header-active-toggle small {
+    color: #7c8eae;
+    font-size: 11px;
+}
+
+.staff-wizard {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 10px 22px;
+}
+
+.wizard-step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.wizard-step:not(:last-child)::after {
+    position: absolute;
+    top: 23px;
+    right: -5px;
+    left: calc(50% + 25px);
+    height: 1px;
+    background: #cbd5e1;
+    content: "";
+}
+
+.wizard-step button {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: #e7edf6;
+    color: #64748b;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.wizard-step.is-active button,
+.wizard-step.is-complete button {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    box-shadow: 0 6px 16px rgb(37 99 235 / 0.24);
+}
+
+.wizard-step.is-complete::after { background: #2563eb; }
+.wizard-step strong,
+.wizard-step span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wizard-step strong { color: #334155; font-size: 13px; }
+.wizard-step span { margin-top: 3px; color: #8090ad; font-size: 11px; }
+.wizard-step.is-active strong { color: #1d4ed8; }
+
+.review-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.review-grid > div {
+    padding: 13px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fbfdff;
+}
+
+.review-grid span,
+.review-grid strong { display: block; }
+.review-grid span { margin-bottom: 5px; color: #71809a; font-size: 11px; }
+.review-grid strong { color: #1e293b; font-size: 13px; }
+
+.previous-staff-button {
+    min-height: 42px;
+    padding: 8px 18px;
+    border: 1px solid #d3ddea;
+    border-radius: 8px;
+    background: #fff;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (max-width: 800px) {
+    .staff-wizard { grid-template-columns: repeat(2, 1fr); margin-inline: 0; }
+    .wizard-step:nth-child(2)::after { display: none; }
+}
+
+@media (max-width: 550px) {
+    .staff-wizard { grid-template-columns: 1fr; }
+    .wizard-step::after { display: none; }
+    .wizard-step button { width: 38px; height: 38px; flex-basis: 38px; font-size: 14px; }
+    .review-grid { grid-template-columns: 1fr; }
+}
+
+/* Keep document previews attached to the document uploader, not between form fields. */
+.staff-document-area {
+    min-width: min(360px, 48%);
+    margin-left: auto;
+}
+
+.staff-document-area .staff-document-upload {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    box-sizing: border-box;
+    display: block;
+}
+
+.document-upload-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.staff-document-area .staff-document-list {
+    grid-template-columns: 1fr;
+    margin: 10px 0 0;
+}
+
+.staff-document-area .document-errors {
+    margin: 8px 0 0;
+}
+
+/* Avoid global span rules moving required markers onto a separate line. */
+.add-staff-form .form-field label {
+    display: block;
+    line-height: 1.25;
+}
+
+.form-field label .required {
+    display: inline;
+    margin-left: 3px;
+    vertical-align: baseline;
+    line-height: inherit;
+}
+
+@media (max-width: 900px) {
+    .staff-document-area {
+        width: 100%;
+        min-width: 0;
+        margin-left: 0;
+    }
+}

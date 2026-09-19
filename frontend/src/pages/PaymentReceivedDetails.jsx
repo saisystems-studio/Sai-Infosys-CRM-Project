@@ -7,6 +7,7 @@ import {
   getPaymentStaff,
 } from "./paymentDetailsReport";
 import { getCompletedReportDateRange } from "./CompletedInquiryReport/completedInquiryReport";
+import { exportReport } from "../reportExport";
 import "./CompletedInquiryReport/CompletedInquiryReport.css";
 import "./PaymentDetailsReport.css";
 
@@ -40,6 +41,7 @@ export default function PaymentReceivedDetails() {
   const [datePreset, setDatePreset] = useState("custom");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState("");
 
   const selectDatePreset = (preset) => {
     setDatePreset(preset);
@@ -137,6 +139,20 @@ export default function PaymentReceivedDetails() {
       latestPayment,
     };
   }, [filteredPayments]);
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      await exportReport({
+        format, title: "Payment Received Report", filename: "payment-received-report",
+        periodLabel: filters.fromDate && filters.toDate ? `${filters.fromDate} to ${filters.toDate}` : "All payments",
+        headers: ["Company", "Payment date", "Product", "Paid amount", "Revenue", "Payment type", "Remaining", "Status"],
+        rows: filteredPayments.map((payment) => {
+          const summary = getPaymentCardSummary(payment);
+          return [summary.company, formatDate(payment.payment_date || payment.created_on), summary.product, Number(summary.paidAmount || 0), Number(summary.revenueAmount || 0), payment.payment_type === "full" ? "Full Payment" : "Installment", Number(payment.remaining_balance || 0), "Received"];
+        }),
+      });
+    } finally { setExporting(""); }
+  };
 
   if (loading)
     return (
@@ -269,6 +285,10 @@ export default function PaymentReceivedDetails() {
             Clear
           </button>
         )}
+        <div className="completed-report-export-actions">
+          <button type="button" disabled={!filteredPayments.length || Boolean(exporting)} onClick={() => handleExport("excel")}>{exporting === "excel" ? "Exporting..." : "Export Excel"}</button>
+          <button type="button" disabled={!filteredPayments.length || Boolean(exporting)} onClick={() => handleExport("pdf")}>{exporting === "pdf" ? "Exporting..." : "Export PDF"}</button>
+        </div>
       </div>
 
       {error ? (

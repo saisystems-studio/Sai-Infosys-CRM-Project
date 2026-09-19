@@ -6,7 +6,6 @@ import {
   canPerform,
   canViewCustomerBusinessSummaryReport,
   canViewStaffDailyTaskReport,
-  canViewProductBilling,
   canViewStaffPerformanceReport,
   hasFullMenuAccess,
   loadActiveMenu,
@@ -41,12 +40,6 @@ test("Staff Daily Task Report is restricted to the Super Admin role", () => {
   for (const role of ["Admin", "Staff", "Sales", ""]) {
     assert.equal(canViewStaffDailyTaskReport({ role }), false);
   }
-});
-
-test("Product Billing is limited to Admin and Super Admin", () => {
-  assert.equal(canViewProductBilling({ role: "Admin" }), true);
-  assert.equal(canViewProductBilling({ role: "super_admin" }), true);
-  assert.equal(canViewProductBilling({ role: "Staff" }), false);
 });
 
 test("only Admin and Super Admin roles receive full menu access", () => {

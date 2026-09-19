@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Prefetch, Q, Sum
@@ -10,12 +11,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from staff.access import get_staff, has_full_access, normalize_role
+from staff.access import get_staff, has_full_access, menu_permission, normalize_role
 from Customers.models import CustomerContact, CustomerDetails, CustomerLicenseDetails
 from Inquiry.models import InquiryDetails_tbl, InquiryProductDetails_tbl, PaymentDetail, ProductBilling
 from Inquiry.models import InquiryTaskProgress
 from Inquiry.serializers import InquiryListSerializer
-from staff.models import StaffDetails
+from staff.models import StaffDetails, StaffMenuPermission
 from masters.models import LicenseTypeMaster, ProductTypeMaster
 
 
@@ -131,6 +132,9 @@ def dashboard_stats(request):
         Inquiry_Id__in=inquiries,
         Payment_Status="Received",
     ).aggregate(total=Sum("Revenue_Amount"))["total"] or 0
+    total_invoice_amount = InquiryProductDetails_tbl.objects.filter(
+        Inquiry_Id__in=inquiries,
+    ).aggregate(total=Sum("Invoice_Amount"))["total"] or 0
     completed_inquiries = inquiries.annotate(
         has_completed_task=Exists(completed_tasks),
     ).filter(has_completed_task=True)
@@ -155,10 +159,31 @@ def dashboard_stats(request):
     for row in dashboard_rows:
         row["is_not_started"] = row["id"] in not_started_ids
 
+    overdue_created_date = timezone.now().date() - timedelta(days=2)
+    overdue_inquiries = inquiries.filter(
+        Status_Id__status_type_name__iexact="In Progress",
+        Created_On__date__lte=overdue_created_date,
+    ).select_related("Customer_Id", "Status_Id", "Resource_Id").prefetch_related(
+        Prefetch(
+            "inquiryproductdetails_tbl_set",
+            queryset=InquiryProductDetails_tbl.objects.select_related("ProductType_Id"),
+        ),
+    )
+    overdue_rows = InquiryListSerializer(
+        overdue_inquiries.order_by("Created_On"),
+        many=True,
+        context={"request": request},
+    ).data
+    for row in overdue_rows:
+        row["in_progress_since"] = row["created_date"]
+        row["overdue_basis"] = "created"
+        row["is_overdue"] = True
+
     return Response({
         "totalCustomers": customers.count(),
         "totalInquiries": inquiries.count(),
         "totalRevenue": total_revenue,
+        "totalInvoiceAmount": total_invoice_amount,
         "notStartedInquiries": inquiries.annotate(
             has_started_task=Exists(started_tasks),
         ).filter(has_started_task=False).count(),
@@ -168,6 +193,7 @@ def dashboard_stats(request):
         "completedSchedules": completed_inquiries.count(),
         "completedRevenue": completed_revenue,
         "dashboardInquiries": dashboard_rows,
+        "overdueInProgressInquiries": overdue_rows,
     })
 
 
@@ -187,13 +213,37 @@ def customer_business_summary(request):
     inquiries = InquiryDetails_tbl.objects.select_related(
         "Customer_Id", "Status_Id", "Source_Id", "Resource_Id"
     ).prefetch_related(
-        "inquiryproductdetails_tbl_set__ProductType_Id",
-        "task_progress__Resource_Id",
+        Prefetch(
+            "inquiryproductdetails_tbl_set",
+            queryset=InquiryProductDetails_tbl.objects.select_related("ProductType_Id").only(
+                "id", "Inquiry_Id", "ProductType_Id", "Amount",
+                "ProductType_Id__Id", "ProductType_Id__product_type_name",
+            ),
+        ),
+        Prefetch(
+            "task_progress",
+            queryset=InquiryTaskProgress.objects.only("id", "Inquiry_Id", "End_Time"),
+        ),
     )
-    payments = PaymentDetail.objects.select_related(
+    # Only select legacy columns used by this report.  PaymentDetail has newer
+    # billing fields, but installations that have not yet applied those schema
+    # additions must still be able to open the customer summary.
+    payments = PaymentDetail.objects.filter(Inquiry_Product__isnull=False).select_related(
         "Inquiry_Product__Inquiry_Id__Customer_Id",
         "Inquiry_Product__ProductType_Id",
         "Inquiry_Product__Inquiry_Id__Resource_Id",
+    ).only(
+        "Id", "Inquiry_Product", "Amount", "Payment_Date",
+        "Inquiry_Product__id", "Inquiry_Product__Inquiry_Id",
+        "Inquiry_Product__ProductType_Id",
+        "Inquiry_Product__Inquiry_Id__id", "Inquiry_Product__Inquiry_Id__Customer_Id",
+        "Inquiry_Product__Inquiry_Id__Resource_Id",
+        "Inquiry_Product__ProductType_Id__Id", "Inquiry_Product__ProductType_Id__product_type_name",
+        "Inquiry_Product__Inquiry_Id__Customer_Id__id",
+        "Inquiry_Product__Inquiry_Id__Customer_Id__company_name",
+        "Inquiry_Product__Inquiry_Id__Customer_Id__customer_name",
+        "Inquiry_Product__Inquiry_Id__Resource_Id__Id",
+        "Inquiry_Product__Inquiry_Id__Resource_Id__Full_Name",
     )
 
     customer_rows = [
@@ -269,15 +319,50 @@ def customer_business_summary(request):
             if payment.Inquiry_Product.Inquiry_Id.Resource_Id else "",
             "category": payment.Inquiry_Product.ProductType_Id.product_type_name
             if payment.Inquiry_Product.ProductType_Id else "Other",
-            "date": payment.Payment_Date.date().isoformat(),
+            # Payment_Date is nullable for legacy payment records.  Keep those
+            # rows in the report instead of failing the entire report request.
+            "date": payment.Payment_Date.date().isoformat()
+            if payment.Payment_Date else "",
             "amount": float(payment.Amount or 0),
             "remarks": "",
         }
         for payment in payments
     ]
 
+    bill_rows = []
+    for bill in ProductBilling.objects.select_related("Product_Id").prefetch_related("payment_details"):
+        total = bill.Amount + bill.GST
+        bill_rows.append({
+            "id": f"b-{bill.pk}",
+            "billId": bill.pk,
+            "customerId": str(bill.Customer_Id_id),
+            "date": bill.Created_On.date().isoformat(),
+            "product": bill.Product_Id.product_type_name,
+            "serialNumber": bill.License_Details or "",
+            "quantity": float(bill.Quantity),
+            "rate": float(bill.Rate),
+            "gst": float(bill.GST),
+            "expectedRevenue": float(total),
+            "totalPaid": float(bill.Total_Paid),
+            "balance": float(total - bill.Total_Paid),
+            "status": bill.Payment_Status,
+        })
+        for payment in bill.payment_details.all():
+            transaction_rows.append({
+                "id": f"p-{payment.pk}",
+                "billingId": f"b-{bill.pk}",
+                "customerId": str(bill.Customer_Id_id),
+                "product": bill.Product_Id.product_type_name,
+                "resource": "",
+                "category": "Product Sales",
+                "date": payment.Payment_Date.date().isoformat() if payment.Payment_Date else "",
+                "amount": float(payment.Amount or 0),
+                "remarks": "",
+            })
+
     return Response({
         "customers": customer_rows,
+        "productBills": bill_rows,
         "inquiries": inquiry_rows,
         "schedules": schedule_rows,
         "transactions": transaction_rows,
@@ -399,11 +484,87 @@ def staff_daily_task_report(request):
     })
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, menu_permission("Licence Expiry Report")])
+def license_expiry_report(request):
+    """Customer licences expiring in a selected period for permitted staff."""
+
+    requested_from = request.query_params.get("from_date", "")
+    requested_to = request.query_params.get("to_date", "")
+    today = timezone.now().date()
+    month_start = today.replace(day=1)
+    next_month_start = (month_start + timedelta(days=32)).replace(day=1)
+    default_month_end = next_month_start - timedelta(days=1)
+    from_date = parse_date(requested_from) if requested_from else month_start
+    to_date = parse_date(requested_to) if requested_to else default_month_end
+    if from_date is None or to_date is None:
+        return Response(
+            {"detail": "Dates must use the YYYY-MM-DD format."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if from_date > to_date:
+        return Response(
+            {"detail": "From date cannot be after to date."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    licenses = CustomerLicenseDetails.objects.filter(
+        expiry_date__range=(from_date, to_date),
+        license_type__isnull=False,
+    ).select_related("customer", "license_type").prefetch_related(
+        "customer__contacts",
+    )
+    product_id = request.query_params.get("product_id", "").strip()
+    if product_id:
+        licenses = licenses.filter(license_type_id=product_id)
+
+    products = LicenseTypeMaster.objects.order_by("license_type_name", "Id")
+
+    rows = []
+    for license in licenses.order_by(
+        "expiry_date", "customer__company_name", "customer__customer_name", "id",
+    ):
+        contact = next(iter(license.customer.contacts.all()), None)
+        rows.append({
+            "id": license.id,
+            "company_name": license.customer.company_name or license.customer.customer_name or "—",
+            "contact_number": contact.contact_number if contact else "",
+            "product_id": license.license_type_id,
+            "product_name": license.license_type.license_type_name,
+            "serial_number": license.tally_serial_number or "",
+            "expiry_date": license.expiry_date.isoformat(),
+        })
+
+    return Response({
+        "products": [
+            {"id": product.Id, "name": product.license_type_name}
+            for product in products
+        ],
+        "rows": rows,
+    })
+
+
 def _require_billing_access(request):
     staff = get_staff(request.user)
-    role = normalize_role(getattr(staff, "Role", ""))
-    if role not in {"admin", "super admin"} and not (request.user.is_superuser and staff is None):
-        return Response({"detail": "Only Admin and Super Admin can access product billing."}, status=status.HTTP_403_FORBIDDEN)
+    if has_full_access(request.user, staff):
+        return None
+    if staff is None or not staff.Is_Active:
+        return Response({"detail": "You do not have permission to access product billing."}, status=status.HTTP_403_FORBIDDEN)
+
+    permission_filters = {
+        "Staff": staff,
+        "Menu__Menu_Name": "Product Billing",
+        "Menu__Is_Active": True,
+        "Can_View": True,
+    }
+    if request.method == "POST":
+        permission_filters["Can_Add"] = True
+    permitted = StaffMenuPermission.objects.filter(
+        **permission_filters,
+    ).exists()
+    if not permitted:
+        return Response({"detail": "You do not have permission to access product billing."}, status=status.HTTP_403_FORBIDDEN)
+    return None
 
 
 @api_view(["GET", "POST"])
@@ -516,33 +677,60 @@ def product_billing_customer_lookup(request):
     if denied:
         return denied
     search_query = str(request.query_params.get("query", "")).strip()
-    contacts = CustomerContact.objects.select_related("customer").prefetch_related(
-        "customer__licenses__license_type",
-    )
+    customer_id = request.query_params.get("customer_id")
 
-    # Autocomplete searches by either a saved phone number or the company name.
-    # Keep the contact_number lookup below for callers that need one exact match.
+    # Include customer and contact names so users can find every customer they
+    # are allowed to bill, even where no contact number has been saved yet.
     if search_query:
-        matches = contacts.filter(
-            Q(contact_number__icontains=search_query)
-            | Q(customer__company_name__icontains=search_query),
-        ).order_by("customer__company_name", "contact_number")[:10]
+        # SQL Server cannot use DISTINCT on the whole customer row because it
+        # includes text columns. De-duplicate only primary keys, then fetch
+        # the customer records in a separate query.
+        matching_customer_ids = (
+            CustomerDetails.objects
+            .filter(
+                Q(customer_name__icontains=search_query)
+                | Q(company_name__icontains=search_query)
+                | Q(contacts__contact_name__icontains=search_query)
+                | Q(contacts__contact_number__icontains=search_query),
+            )
+            .order_by()
+            .values_list("pk", flat=True)
+            .distinct()[:10]
+        )
+        matches = (
+            CustomerDetails.objects
+            .filter(pk__in=matching_customer_ids)
+            .prefetch_related("contacts")
+            .order_by("company_name", "customer_name")
+        )
         return Response({
             "results": [
                 {
-                    "customer_id": contact.customer_id,
-                    "contact_number": contact.contact_number or "",
-                    "customer_name": contact.customer.customer_name or "",
-                    "company_name": contact.customer.company_name or "",
+                    "customer_id": customer.id,
+                    "contact_number": (
+                        next(iter(customer.contacts.all()), None).contact_number
+                        if customer.contacts.all() else ""
+                    ) or "",
+                    "customer_name": customer.customer_name or "",
+                    "company_name": customer.company_name or "",
                 }
-                for contact in matches
+                for customer in matches
             ],
         })
 
     number = str(request.query_params.get("contact_number", "")).strip()
-    contact = contacts.filter(contact_number=number).first()
-    if not contact:
-        return Response({"detail": "Customer not found for this contact number."}, status=status.HTTP_404_NOT_FOUND)
+    if customer_id:
+        customer = CustomerDetails.objects.prefetch_related(
+            "contacts", "licenses__license_type",
+        ).filter(pk=customer_id).first()
+    else:
+        contact = CustomerContact.objects.select_related("customer").filter(
+            contact_number=number,
+        ).first()
+        customer = contact.customer if contact else None
+    if not customer:
+        return Response({"detail": "Customer not found."}, status=status.HTTP_404_NOT_FOUND)
+    contact = customer.contacts.filter(contact_number=number).first() if number else customer.contacts.first()
     licenses = [
         {
             "id": license.id,
@@ -551,6 +739,13 @@ def product_billing_customer_lookup(request):
             "admin_id": license.admin_id or "",
             "expiry_date": license.expiry_date.isoformat() if license.expiry_date else "",
         }
-        for license in contact.customer.licenses.all()
+        for license in customer.licenses.all()
     ]
-    return Response({"customer_id": contact.customer_id, "customer_name": contact.customer.customer_name or "", "company_name": contact.customer.company_name or "", "license_details": "", "license_options": licenses})
+    return Response({
+        "customer_id": customer.id,
+        "contact_number": contact.contact_number if contact else "",
+        "customer_name": customer.customer_name or "",
+        "company_name": customer.company_name or "",
+        "license_details": "",
+        "license_options": licenses,
+    })

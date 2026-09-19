@@ -8,8 +8,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Chip,
-  MenuItem,
   TextField,
   ThemeProvider,
   createTheme,
@@ -30,7 +28,8 @@ import {
   money,
   validateFilters,
 } from "./reportModel";
-import { DataTable, Section, StatusBadge } from "./ReportComponents";
+import { DataTable, ExportButtons, Section, StatusBadge } from "./ReportComponents";
+import { downloadReport } from "./reportExport";
 import "../CompletedInquiryReport/CompletedInquiryReport.css";
 import "./CustomerBusinessSummaryReport.css";
 
@@ -75,6 +74,7 @@ const theme = createTheme({
 
 const inquiryColumns = [
   { key: "date", label: "Date", render: dateLabel },
+  { key: "recordType", label: "Type" },
   { key: "product", label: "Product Name" },
   {
     key: "status",
@@ -135,9 +135,11 @@ export default function CustomerBusinessSummaryReport() {
   const [detailOpen, setDetailOpen] = useState(false);
   const detailRequest = useRef(0);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [selectedBill, setSelectedBill] = useState(null);
   const [detailError, setDetailError] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [exporting, setExporting] = useState("");
 
   useEffect(() => {
     const loadReportData = async () => {
@@ -156,6 +158,7 @@ export default function CustomerBusinessSummaryReport() {
           ...result.inquiries,
           ...result.schedules,
           ...result.transactions,
+          ...(result.productBills || []),
         ]
           .map((row) => row.date)
           .filter(Boolean)
@@ -237,11 +240,21 @@ export default function CustomerBusinessSummaryReport() {
     if (!message) setFilters({ ...draft });
   };
 
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      await downloadReport(format, report);
+    } finally {
+      setExporting("");
+    }
+  };
+
   const closeDetails = () => {
     detailRequest.current += 1;
     setDetailOpen(false);
     setDetailLoading(false);
     setSelectedInquiry(null);
+    setSelectedBill(null);
     setDetailError("");
   };
 
@@ -249,7 +262,13 @@ export default function CustomerBusinessSummaryReport() {
     const requestId = ++detailRequest.current;
     setDetailOpen(true);
     setSelectedInquiry(null);
+    setSelectedBill(null);
     setDetailError("");
+    if (inquiry.recordType === "Product Billing") {
+      setSelectedBill(inquiry);
+      setDetailLoading(false);
+      return;
+    }
     setDetailLoading(true);
     try {
       const response = await axios.get(
@@ -388,6 +407,7 @@ export default function CustomerBusinessSummaryReport() {
           >
             Search
           </Button>
+          <ExportButtons onExport={handleExport} busy={exporting} />
         </form>
 
         {error && (
@@ -449,7 +469,7 @@ export default function CustomerBusinessSummaryReport() {
         <Section>
           <DataTable
             key={reportKey}
-            rows={report.inquiries}
+            rows={report.summaryRows}
             fixedPageSize={10}
             columns={[
               ...inquiryColumns,
@@ -462,7 +482,7 @@ export default function CustomerBusinessSummaryReport() {
                     size="small"
                     color="primary"
                     aria-label={`View ${inquiry.product || "inquiry"} details`}
-                    title="View inquiry details"
+                    title={inquiry.recordType === "Product Billing" ? "View product bill details" : "View inquiry details"}
                     onClick={() => selectInquiry(inquiry)}
                   >
                     <FiEye size={18} />
@@ -470,7 +490,7 @@ export default function CustomerBusinessSummaryReport() {
                 ),
               },
             ]}
-            title="inquiries"
+            title="inquiries and product bills"
           />
         </Section>
 
@@ -481,8 +501,26 @@ export default function CustomerBusinessSummaryReport() {
           maxWidth="lg"
           aria-labelledby="cbs-detail-title"
         >
-          <DialogTitle id="cbs-detail-title">Inquiry Details</DialogTitle>
+          <DialogTitle id="cbs-detail-title">{selectedBill ? "Product Billing Details" : "Inquiry Details"}</DialogTitle>
           <DialogContent dividers>
+            {selectedBill && <>
+              <div className="cbs-detail-summary">
+                <strong>{report.customer.company || report.customer.name} · Bill #{selectedBill.billId}</strong>
+                <StatusBadge value={selectedBill.status} />
+              </div>
+              <DataTable rows={[selectedBill]} fixedPageSize={10} title="Product bill details" columns={[
+                { key: "date", label: "Bill Date", render: dateLabel },
+                { key: "product", label: "Product" },
+                { key: "serialNumber", label: "Serial Number", render: value => value || "—" },
+                { key: "quantity", label: "Quantity", numeric: true },
+                { key: "rate", label: "Rate", numeric: true, render: money },
+                { key: "gst", label: "GST", numeric: true, render: money },
+                { key: "expectedRevenue", label: "Bill Total", numeric: true, render: money },
+                { key: "totalPaid", label: "Total Paid", numeric: true, render: money },
+                { key: "balance", label: "Balance", numeric: true, render: money },
+              ]} />
+              <p>Revenue Amount in the report includes payments recorded in the selected period. Total Paid and Balance show all payments for this bill.</p>
+            </>}
             {detailLoading && (
               <div role="status">Loading inquiry details...</div>
             )}

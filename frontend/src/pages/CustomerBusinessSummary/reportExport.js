@@ -22,26 +22,54 @@ export function reportSheets(report, activityRows) {
   ];
 }
 
-export async function createExcelBuffer(sheets) {
+export async function createExcelBuffer(sheets, report) {
   const module = await import("exceljs");
   const Workbook = module.Workbook || module.default.Workbook;
   const workbook = new Workbook();
   workbook.creator = "Sai Infosys CRM";
   for (const sheet of sheets) {
     const worksheet = workbook.addWorksheet(sheet.name);
+    const columnCount = Math.max(sheet.headers.length, 1);
+    const reportSubtitle = report
+      ? `${report.customer.company || report.customer.name} | ${report.filters.from} to ${report.filters.to}`
+      : "Live CRM database records";
+    worksheet.addRow(["Customer Business Summary Report"]);
+    worksheet.addRow([reportSubtitle]);
+    worksheet.addRow([sheet.name]);
+    worksheet.addRow([]);
     worksheet.addRow(sheet.headers);
     sheet.rows.forEach(row => worksheet.addRow(row));
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
-    worksheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, worksheet.rowCount), column: sheet.headers.length } };
-    worksheet.getRow(1).eachCell(cell => {
+    worksheet.mergeCells(1, 1, 1, columnCount);
+    worksheet.mergeCells(2, 1, 2, columnCount);
+    worksheet.mergeCells(3, 1, 3, columnCount);
+    worksheet.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+    worksheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF31546B" } };
+    worksheet.getCell("A1").alignment = { vertical: "middle" };
+    worksheet.getRow(1).height = 27;
+    worksheet.getCell("A2").font = { size: 10, color: { argb: "FF475569" } };
+    worksheet.getCell("A3").font = { bold: true, size: 11, color: { argb: "FF31546B" } };
+    worksheet.getRow(5).eachCell(cell => {
       cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF5254BE" } };
+      cell.alignment = { vertical: "middle", wrapText: true };
     });
-    worksheet.columns.forEach((column, index) => {
+    sheet.headers.forEach((header, index) => {
+      const column = worksheet.getColumn(index + 1);
       column.width = Math.min(60, Math.max(18, ...[sheet.headers, ...sheet.rows].map(row => String(row[index] ?? "").length + 2)));
       column.alignment = { vertical: "top", wrapText: true };
-      if (/revenue|amount/i.test(sheet.headers[index])) column.numFmt = '#,##0.00';
+      if (/revenue|amount/i.test(header)) column.numFmt = '#,##0.00';
     });
+    for (let rowNumber = 6; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+      const row = worksheet.getRow(rowNumber);
+      row.eachCell({ includeEmpty: true }, cell => {
+        cell.border = { bottom: { style: "thin", color: { argb: "FFE5E7EB" } } };
+        if (rowNumber % 2 === 0) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      });
+      if (sheet.name === "Summary") row.getCell(1).font = { bold: true, color: { argb: "FF334155" } };
+    }
+    worksheet.views = [{ state: "frozen", ySplit: 5 }];
+    worksheet.autoFilter = { from: { row: 5, column: 1 }, to: { row: Math.max(5, worksheet.rowCount), column: columnCount } };
+    worksheet.pageSetup = { orientation: columnCount > 5 ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
   }
   return workbook.xlsx.writeBuffer();
 }
@@ -75,7 +103,7 @@ export async function downloadReport(format, report, activityRows) {
     doc.save(`${filename}.pdf`);
     return;
   }
-  const buffer = await createExcelBuffer(sheets);
+  const buffer = await createExcelBuffer(sheets, report);
   const url = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   const link = document.createElement("a");
   link.href = url; link.download = `${filename}.xlsx`;

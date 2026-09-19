@@ -15,11 +15,6 @@ export function canViewStaffDailyTaskReport(user = {}) {
   return normalizeRole(user?.role || user?.user_type) === "super admin";
 }
 
-export function canViewProductBilling(user = {}) {
-  const role = normalizeRole(user?.role || user?.user_type);
-  return role === "admin" || role === "super admin";
-}
-
 export function loadActiveMenu(storage) {
   try {
     return storage?.getItem(ACTIVE_MENU_STORAGE_KEY) || "";

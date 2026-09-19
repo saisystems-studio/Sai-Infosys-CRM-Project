@@ -451,7 +451,7 @@
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 15px;
     margin-bottom: 15px
 }
@@ -463,6 +463,145 @@
     background: #fff;
     box-shadow: 0 3px 14px rgba(25, 32, 60, .025);
     overflow: hidden;
+}
+
+.dashboard-priority-panel {
+    margin-top: 18px;
+    overflow: hidden;
+    border: 1px solid #fecaca;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(185, 28, 28, .07);
+}
+
+.dashboard-priority-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 15px 18px;
+    border-bottom: 1px solid #fee2e2;
+    background: linear-gradient(90deg, #fff7f7, #fff);
+}
+
+.dashboard-priority-kicker {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #dc2626;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.dashboard-priority-header h2 {
+    margin: 4px 0 0;
+    color: #7f1d1d;
+    font: 700 14px Manrope;
+}
+
+.dashboard-priority-header p {
+    margin: 4px 0 0;
+    color: #9b7070;
+    font-size: 10px;
+}
+
+.dashboard-priority-count,
+.dashboard-priority-status {
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.dashboard-priority-count {
+    padding: 6px 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.dashboard-priority-row {
+    display: grid;
+    grid-template-columns: 110px minmax(150px, .8fr) minmax(125px, .65fr) minmax(180px, 1.2fr) auto 18px;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 12px 18px;
+    border: 0;
+    border-bottom: 1px solid #fef2f2;
+    border-left: 4px solid #dc2626;
+    background: #fffafa;
+    color: #5f6b7d;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.dashboard-priority-row:last-child {
+    border-bottom: 0;
+}
+
+.dashboard-priority-row:hover {
+    background: #fff1f2;
+}
+
+.dashboard-priority-age,
+.dashboard-priority-company,
+.dashboard-priority-assignee {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.dashboard-priority-age span,
+.dashboard-priority-assignee span,
+.dashboard-priority-company span {
+    overflow: hidden;
+    color: #9a7474;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-priority-age strong,
+.dashboard-priority-company strong,
+.dashboard-priority-assignee strong {
+    overflow: hidden;
+    color: #4b2a2a;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-priority-assignee,
+.dashboard-priority-products {
+    border-left: 1px solid #fee2e2;
+    padding-left: 14px;
+}
+
+.dashboard-priority-products {
+    overflow: hidden;
+    color: #805b5b;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dashboard-priority-status {
+    padding: 5px 9px;
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.dashboard-priority-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 24px 18px;
+    color: #43806b;
+    font-size: 11px;
 }
 
 .dashboard-inquiries-header {
@@ -571,7 +710,7 @@
     padding-left: 14px;
 }
 
-.dashboard-inquiry-assignee > span {
+.dashboard-inquiry-assignee>span {
     color: #959cac;
     font-size: 9px;
 }
@@ -674,7 +813,7 @@
 }
 
 .stat-card {
-    padding: 16px 17px
+    padding: 5px 17px
 }
 
 .stat-top {
@@ -717,6 +856,11 @@
 .stat-icon.orange {
     color: #df8a43;
     background: #fff3e9
+}
+
+.stat-icon.invoice {
+    color: #0f766e;
+    background: #e6fffb;
 }
 
 .stat-card>p {
@@ -1531,6 +1675,38 @@
 }
 
 @media (max-width: 760px) {
+    .dashboard-priority-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .dashboard-priority-row {
+        grid-template-columns: 1fr auto 18px;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .dashboard-priority-age {
+        grid-column: 1 / -1;
+    }
+
+    .dashboard-priority-company,
+    .dashboard-priority-assignee,
+    .dashboard-priority-products {
+        grid-column: 1 / 2;
+    }
+
+    .dashboard-priority-assignee,
+    .dashboard-priority-products {
+        border-left: 0;
+        padding-left: 0;
+    }
+
+    .dashboard-priority-status {
+        grid-column: 2 / 3;
+        grid-row: 2;
+    }
+
     .dashboard-inquiry-row {
         grid-template-columns: 1fr auto 18px;
         gap: 8px;

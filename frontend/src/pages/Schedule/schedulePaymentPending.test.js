@@ -59,6 +59,14 @@ test("unpaid service sends zero amounts and the unpaid flag", () => {
   });
 });
 
+test("AMC service sends zero amounts and the AMC flag", () => {
+  assert.deepEqual(buildPaymentPendingPayload("3000.00", "2500.00", false, true), {
+    invoice_amount: 0,
+    revenue_amount: 0,
+    amc_service: true,
+  });
+});
+
 test("payment completion displays a list validation error returned by the API", () => {
   assert.equal(
     getPaymentPendingError(

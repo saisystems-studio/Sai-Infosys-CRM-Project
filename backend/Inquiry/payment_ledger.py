@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 
 from masters.models import StatusTypeMaster
 
-from .models import InquiryProductDetails_tbl, PaymentDetail
+from .models import InquiryProductDetails_tbl, PaymentDetail, ProductBilling
 
 
 def get_payment_balance(product):
@@ -110,6 +110,16 @@ def approve_payment_detail(*, payment_detail_id, user):
     detail.Approved_By = user
     detail.Approved_On = timezone.now()
     detail.save(update_fields=["Approval_Status", "Approved_By", "Approved_On"])
-    refresh_product_payment_status(detail.Inquiry_Product)
-    _mark_inquiry_complete_if_all_products_settled(detail.Inquiry_Product.Inquiry_Id, user)
+    if detail.Product_Billing_id:
+        bill = ProductBilling.objects.select_for_update().get(pk=detail.Product_Billing_id)
+        billed_total = bill.Amount + bill.GST
+        has_pending = bill.payment_details.filter(
+            Approval_Status=PaymentDetail.PaymentApprovalStatus.PENDING,
+        ).exists()
+        bill.Payment_Status = "Received" if bill.Total_Paid == billed_total and not has_pending else "Pending"
+        bill.save(update_fields=["Payment_Status"])
+        detail.Product_Billing = bill
+    else:
+        refresh_product_payment_status(detail.Inquiry_Product)
+        _mark_inquiry_complete_if_all_products_settled(detail.Inquiry_Product.Inquiry_Id, user)
     return detail

@@ -32,12 +32,18 @@ export function validateRevenueAmount(value) {
   return "";
 }
 
-export function buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService = false) {
-  if (unpaidService) {
+export function buildPaymentPendingPayload(
+  invoiceAmount,
+  revenueAmount,
+  unpaidService = false,
+  amcService = false,
+) {
+  if (unpaidService || amcService) {
     return {
       invoice_amount: 0,
       revenue_amount: 0,
-      unpaid_service: true,
+      ...(unpaidService ? { unpaid_service: true } : {}),
+      ...(amcService ? { amc_service: true } : {}),
     };
   }
 

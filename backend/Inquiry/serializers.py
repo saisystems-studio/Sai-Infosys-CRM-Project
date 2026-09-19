@@ -14,6 +14,7 @@ from .models import (
     InquiryTaskProgress,
     PaymentFollowUp,
     PaymentDetail,
+    ProductBillingFollowUp,
     TaskStatus,
 )
 from .task_progress import can_update_inquiry_task
@@ -51,6 +52,7 @@ class InquiryProductInputSerializer(serializers.Serializer):
 
 class PaymentPendingSerializer(serializers.Serializer):
     unpaid_service = serializers.BooleanField(required=False, default=False)
+    amc_service = serializers.BooleanField(required=False, default=False)
     invoice_amount = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -138,6 +140,33 @@ class PaymentPendingListSerializer(PaymentApprovalSerializer):
 
 
 class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
+    def to_representation(self, instance):
+        if not instance.Product_Billing_id:
+            return super().to_representation(instance)
+        bill = instance.Product_Billing
+        total = bill.Amount + bill.GST
+        return {
+            "id": instance.Id,
+            "product_id": f"billing-{bill.Id}",
+            "customer_name": bill.Customer_Name or bill.Customer_Id.customer_name,
+            "company_name": bill.Company_Name or bill.Customer_Id.company_name,
+            "staff_name": "Unassigned",
+            "product_name": bill.Product_Id.product_type_name or "Product",
+            "requirement": "",
+            "invoice_amount": f"{total:.2f}",
+            "revenue_amount": f"{total:.2f}",
+            "payment_amount": f"{instance.Amount:.2f}",
+            "payment_type": instance.Payment_Type,
+            "payment_date": self.fields["payment_date"].to_representation(instance.Payment_Date) if instance.Payment_Date else None,
+            "payment_status": bill.Payment_Status,
+            "total_paid": f"{bill.Total_Paid:.2f}",
+            "remaining_balance": f"{total - bill.Total_Paid:.2f}",
+            "is_latest_payment": instance.Id == bill.payment_details.order_by("-Id").values_list("Id", flat=True).first(),
+            "approval_status": instance.Approval_Status,
+            "approved_by": instance.Approved_By.username if instance.Approved_By_id else None,
+            "approved_on": self.fields["approved_on"].to_representation(instance.Approved_On) if instance.Approved_On else None,
+        }
+
     id = serializers.IntegerField(source="Id", read_only=True)
     product_id = serializers.IntegerField(source="Inquiry_Product_id", read_only=True)
     customer_name = serializers.CharField(source="Inquiry_Product.Inquiry_Id.Customer_Id.customer_name")
@@ -212,6 +241,13 @@ class PaymentFollowUpSerializer(serializers.ModelSerializer):
         read_only_fields = ["FollowUp_Id", "Created_On"]
 
 
+class ProductBillingFollowUpSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductBillingFollowUp
+        fields = ["FollowUp_Id", "FollowUp_Date", "FollowUp_Type", "Notes", "Created_On"]
+        read_only_fields = ["FollowUp_Id", "Created_On"]
+
+
 # ============================================================
 # PRODUCT LIST SERIALIZER
 # ============================================================
@@ -235,6 +271,7 @@ class InquiryProductListSerializer(serializers.ModelSerializer):
         read_only=True,
         allow_null=True,
     )
+    is_amc = serializers.BooleanField(source="Is_AMC", read_only=True)
     product_name = serializers.SerializerMethodField()
     product_type_name = serializers.SerializerMethodField()
 
@@ -276,6 +313,7 @@ class InquiryProductListSerializer(serializers.ModelSerializer):
             "amount",
             "invoice_amount",
             "revenue_amount",
+            "is_amc",
             "requirement",
             "Quantity",
             "Rate",

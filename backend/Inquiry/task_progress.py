@@ -270,9 +270,14 @@ def remove_active_inquiry_task(*, inquiry, user):
 
 @transaction.atomic
 def move_inquiry_to_payment_pending(
-    *, inquiry, user, invoice_amount=None, revenue_amount=0, unpaid_service=False
+    *, inquiry, user, invoice_amount=None, revenue_amount=0, unpaid_service=False,
+    amc_service=False
 ):
-    """Finish a saved task as payment pending or as an unpaid service."""
+    """Finish a saved task as payment pending, unpaid service, or AMC service."""
+    if unpaid_service and amc_service:
+        raise ValidationError("Choose either Unpaid Service or AMC, not both.")
+
+    no_charge_service = unpaid_service or amc_service
     resource = _require_writable_actor(user, inquiry, lock=True)
     has_saved_task = InquiryTaskProgress.objects.filter(
         Inquiry_Id=inquiry,
@@ -291,22 +296,25 @@ def move_inquiry_to_payment_pending(
     )
     if product:
         update_fields = ["Revenue_Amount", "Payment_Status"]
-        if unpaid_service:
+        if no_charge_service:
             product.Invoice_Amount = 0
             product.Revenue_Amount = 0
             product.Payment_Status = "Not Required"
-            update_fields.append("Invoice_Amount")
+            product.Is_AMC = amc_service
+            update_fields.extend(["Invoice_Amount", "Is_AMC"])
         elif invoice_amount is not None:
             product.Invoice_Amount = invoice_amount
             update_fields.append("Invoice_Amount")
-        if not unpaid_service:
+        if not no_charge_service:
             product.Revenue_Amount = revenue_amount
             product.Payment_Status = "Pending"
+            product.Is_AMC = False
+            update_fields.append("Is_AMC")
         product.save(update_fields=update_fields)
 
     inquiry.Status_Id = (
         _completed_status(user)
-        if unpaid_service
+        if no_charge_service
         else _required_status(PAYMENT_PENDING_STATUS_NAME)
     )
     inquiry.save(update_fields=["Status_Id"])

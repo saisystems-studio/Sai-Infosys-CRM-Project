@@ -5,6 +5,8 @@ import * as schedulePresentation from "./schedulePresentation.js";
 import {
   formatTaskDuration,
   getDefaultScheduleDateRange,
+  getScheduleFilterOptions,
+  getSchedulePeriodDateRange,
   getScheduleDateState,
   getScheduleCustomerDisplayName,
   getScheduleInitials,
@@ -39,6 +41,38 @@ test("schedule filters default to the current day only", () => {
     fromDate: "2026-08-27",
     toDate: "2026-08-27",
     isTodayOnly: true,
+  });
+});
+
+test("schedule period filters use the same report-style date ranges", () => {
+  const today = new Date("2026-09-16T10:00:00");
+
+  assert.deepEqual(getSchedulePeriodDateRange("yesterday", today), {
+    fromDate: "2026-09-15",
+    toDate: "2026-09-15",
+  });
+  assert.deepEqual(getSchedulePeriodDateRange("this-month", today), {
+    fromDate: "2026-09-01",
+    toDate: "2026-09-30",
+  });
+  assert.deepEqual(getSchedulePeriodDateRange("custom", today), {
+    fromDate: "",
+    toDate: "",
+  });
+});
+
+test("schedule filters include active master options beyond scheduled tasks", () => {
+  const options = getScheduleFilterOptions({
+    resources: [{ Id: 2, Full_Name: "Bala" }, { Id: 1, Full_Name: "Anu" }],
+    statuses: [{ Id: 3, status_type_name: "New" }],
+    products: [{ Id: 4, product_type_name: "TSS" }],
+    inquiries: [],
+  });
+
+  assert.deepEqual(options, {
+    staff: [{ value: "1", label: "Anu" }, { value: "2", label: "Bala" }],
+    statuses: ["New"],
+    products: ["TSS"],
   });
 });
 

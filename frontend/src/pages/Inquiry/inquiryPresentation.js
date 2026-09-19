@@ -110,3 +110,40 @@ export function getSourceName(item, sources = []) {
 
   return source?.source_type_name || source?.name || "—";
 }
+
+export function getInquiryFilterFallbackOptions(inquiries = []) {
+  const statuses = new Map();
+  const resources = new Map();
+  const products = new Map();
+
+  inquiries.forEach((inquiry) => {
+    const statusId = inquiry?.Status_Id ?? inquiry?.status_id ?? inquiry?.status?.Id;
+    const statusName = inquiry?.status_name || inquiry?.status_type_name || inquiry?.status?.status_type_name;
+    if (statusId != null && statusName) {
+      statuses.set(String(statusId), { Id: statusId, status_type_name: statusName });
+    }
+
+    const resourceId = inquiry?.Resource_Id ?? inquiry?.resource_id ?? inquiry?.resource?.Id;
+    const resourceName = inquiry?.resource_name || inquiry?.resource?.Full_Name || inquiry?.resource?.name;
+    if (resourceId != null && resourceName) {
+      resources.set(String(resourceId), { Id: resourceId, Full_Name: resourceName });
+    }
+
+    const inquiryProducts = Array.isArray(inquiry?.products)
+      ? inquiry.products
+      : Array.isArray(inquiry?.inquiry_products) ? inquiry.inquiry_products : [];
+    inquiryProducts.forEach((product) => {
+      const productId = product?.ProductType_Id ?? product?.product_id ?? product?.product?.Id;
+      const productName = product?.product_name || product?.product_type_name || product?.product?.product_type_name || product?.name;
+      if (productId != null && productName) {
+        products.set(String(productId), { Id: productId, product_type_name: productName });
+      }
+    });
+  });
+
+  return {
+    statuses: [...statuses.values()].sort((left, right) => left.status_type_name.localeCompare(right.status_type_name)),
+    resources: [...resources.values()].sort((left, right) => left.Full_Name.localeCompare(right.Full_Name)),
+    products: [...products.values()].sort((left, right) => left.product_type_name.localeCompare(right.product_type_name)),
+  };
+}

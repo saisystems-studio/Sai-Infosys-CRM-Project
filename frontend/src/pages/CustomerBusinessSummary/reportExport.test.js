@@ -14,11 +14,15 @@ test("Excel round-trip preserves every section, monetary numbers, and untrusted 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   assert.equal(workbook.worksheets.length, 8);
-  assert.equal(workbook.getWorksheet("Detailed activity").rowCount, report.activities.length + 1);
+  const detailSheet = workbook.getWorksheet("Detailed activity");
+  assert.equal(detailSheet.rowCount, report.activities.length + 5);
+  assert.equal(detailSheet.getCell("A1").value, "Customer Business Summary Report");
+  assert.equal(detailSheet.getCell("A3").value, "Detailed activity");
+  assert.equal(detailSheet.getCell("A5").value, "Date");
   assert.equal(workbook.getWorksheet("Summary").lastRow.getCell(2).value, "=1+1");
   const revenueSheet = workbook.getWorksheet("Revenue breakdown");
-  assert.equal(typeof revenueSheet.getCell("B2").value, "number");
-  assert.equal([2, 3, 4, 5].reduce((sum, row) => sum + revenueSheet.getCell(`B${row}`).value, 0), report.totalRevenue);
+  assert.equal(typeof revenueSheet.getCell("B6").value, "number");
+  assert.equal([6, 7, 8, 9].reduce((sum, row) => sum + revenueSheet.getCell(`B${row}`).value, 0), report.totalRevenue);
 });
 
 test("detail export includes only supplied matching rows across pages", () => {

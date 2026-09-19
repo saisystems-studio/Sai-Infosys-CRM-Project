@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { exportReport } from "../reportExport";
 import "./StaffPerformanceReport.css";
 import "./CompletedInquiryReport/CompletedInquiryReport.css";
 
@@ -104,19 +105,6 @@ function BarChart({ values, horizontal = false }) {
   );
 }
 
-function downloadCsv(filename, rows) {
-  const csv = rows
-    .map((row) =>
-      row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","),
-    )
-    .join("\n");
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
 export default function StaffPerformanceReport() {
   const [staff, setStaff] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -129,6 +117,7 @@ export default function StaffPerformanceReport() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortAsc, setSortAsc] = useState(false);
+  const [exporting, setExporting] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("crm_access_token");
@@ -360,12 +349,17 @@ export default function StaffPerformanceReport() {
     )
     .slice((page - 1) * 5, page * 5);
 
-  const exportRows = [
-    "Schedule Date,Customer Name,Company,Product,Status,Revenue Amount,Follow-up Date,Remarks".split(
-      ",",
-    ),
-    ...filteredSchedules,
-  ];
+  const exportHeaders = ["Schedule date", "Customer name", "Company", "Product", "Status", "Revenue amount", "Follow-up date", "Staff"];
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      await exportReport({
+        format, title: "Staff Performance Report", filename: "staff-performance-report",
+        periodLabel: fromDate || toDate ? `${fromDate || "Start"} to ${toDate || "Today"}` : "All schedules",
+        headers: exportHeaders, rows: filteredSchedules,
+      });
+    } finally { setExporting(""); }
+  };
 
   if (loading)
     return (
@@ -402,17 +396,17 @@ export default function StaffPerformanceReport() {
         <div className="spr-header-actions">
           <button
             className="spr-button secondary"
-            onClick={() => window.print()}
+            disabled={!filteredSchedules.length || Boolean(exporting)}
+            onClick={() => handleExport("pdf")}
           >
-            Export PDF
+            {exporting === "pdf" ? "Exporting..." : "Export PDF"}
           </button>
           <button
             className="spr-button primary"
-            onClick={() =>
-              downloadCsv("staff-performance-report.csv", exportRows)
-            }
+            disabled={!filteredSchedules.length || Boolean(exporting)}
+            onClick={() => handleExport("excel")}
           >
-            Export Excel
+            {exporting === "excel" ? "Exporting..." : "Export Excel"}
           </button>
         </div>
         <div className="completed-report-total">

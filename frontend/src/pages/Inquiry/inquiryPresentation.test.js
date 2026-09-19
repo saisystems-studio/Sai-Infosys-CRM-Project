@@ -58,3 +58,21 @@ test("created-date periods keep only inquiries within the requested report range
     [inquiries[0], inquiries[1], inquiries[2]],
   );
 });
+
+test("inquiry records provide fallback options when filter master data is unavailable", () => {
+  const options = presentation.getInquiryFilterFallbackOptions?.([
+    {
+      Status_Id: 3,
+      status_name: "Completed",
+      Resource_Id: 8,
+      resource_name: "Anu",
+      products: [{ ProductType_Id: 5, product_name: "TSS" }],
+    },
+  ]);
+
+  assert.deepEqual(options, {
+    statuses: [{ Id: 3, status_type_name: "Completed" }],
+    resources: [{ Id: 8, Full_Name: "Anu" }],
+    products: [{ Id: 5, product_type_name: "TSS" }],
+  });
+});

@@ -76,9 +76,12 @@ class CustomerDetailsSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         errors = {}
+        # A contact number identifies one contact, but a Tally serial number does
+        # not identify one licence record.  Customers can legitimately have more
+        # than one licence (including licences belonging to other customers) with
+        # the same serial number, so do not apply duplicate validation to licences.
         for field, model, identifier, label in [
             ("contacts", CustomerContact, "contact_number", "Contact number"),
-            ("licenses", CustomerLicenseDetails, "tally_serial_number", "Tally serial number"),
         ]:
             seen = set()
             row_errors = []

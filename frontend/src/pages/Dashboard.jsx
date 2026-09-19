@@ -37,6 +37,8 @@ import ProductBilling from "./ProductBilling/ProductBilling";
 import CompletedInquiryReport from "./CompletedInquiryReport/CompletedInquiryReport.jsx";
 import StaffPerformanceReport from "./StaffPerformanceReport";
 import StaffDailyTaskReport from "./StaffDailyTaskReport/StaffDailyTaskReport";
+import LicenseExpiryReport from "./LicenseExpiryReport/LicenseExpiryReport.jsx";
+import SalesReport from "./SalesReport/SalesReport.jsx";
 const CustomerBusinessSummaryReport = lazy(
   () => import("./CustomerBusinessSummary/CustomerBusinessSummaryReport"),
 );
@@ -50,7 +52,6 @@ import { createStaffMode, editStaffMode } from "./Staff/staffNavigation";
 import {
   buildMenuAccess,
   canViewCustomerBusinessSummaryReport,
-  canViewProductBilling,
   canViewStaffDailyTaskReport,
   canViewStaffPerformanceReport,
   hasFullMenuAccess,
@@ -64,6 +65,13 @@ const normalizeRole = (role = "") =>
 
 const normalizeMenuName = (name = "") =>
   String(name).trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+
+const inProgressLabel = (value) => {
+  const startedAt = new Date(value);
+  if (Number.isNaN(startedAt.getTime())) return "Over 2 days";
+  const elapsedDays = Math.ceil((Date.now() - startedAt.getTime()) / 86400000);
+  return `${Math.max(3, elapsedDays)} days in progress`;
+};
 
 const isPaymentReceivedReportMenu = (menuName) => {
   const normalized = normalizeMenuName(menuName);
@@ -251,11 +259,13 @@ function Dashboard() {
     totalCustomers: 0,
     totalInquiries: 0,
     totalRevenue: 0,
+    totalInvoiceAmount: 0,
     notStartedInquiries: 0,
     inProgressSchedules: 0,
     completedSchedules: 0,
     completedRevenue: 0,
     dashboardInquiries: [],
+    overdueInProgressInquiries: [],
   });
   const [loading, setLoading] = useState(true);
   const dashboardRole = normalizeRole(user?.role || user?.user_type);
@@ -282,6 +292,9 @@ function Dashboard() {
     "Customer Business Summary",
     "Customer Business Summary Report",
     "Staff Performance Report",
+    "Staff Daily Task Report",
+    "Licence Expiry Report",
+    "Sales report",
     "Completed Inquiry Detail",
     "Payment Approval",
     "Payment Pending",
@@ -443,9 +456,6 @@ function Dashboard() {
             }
             if (menu.Menu_Name === "Staff Daily Task Report") {
               return canViewStaffDailyTaskReport(loggedInUser);
-            }
-            if (menu.Menu_Name === "Product Billing") {
-              return canViewProductBilling(loggedInUser);
             }
             const isPaymentApproval = menu.Menu_Name === "Payment Approval";
             const isPaymentPending = menu.Menu_Name === "Payment Pending";
@@ -661,31 +671,15 @@ function Dashboard() {
   ======================================================= */
 
   const displayMenus = (() => {
-    const scheduleMenu = menus.find((menu) => menu.Menu_Name === "Schedule");
-    const menusWithProductBilling =
-      canViewProductBilling(user) &&
-      !menus.some((menu) => menu.Menu_Name === "Product Billing")
-        ? [
-            ...menus,
-            {
-              Id: "product-billing",
-              Menu_Name: "Product Billing",
-              parent_id: null,
-              Display_Order: Number(scheduleMenu?.Display_Order || 0) + 0.1,
-              Icon: "receipt",
-              Is_Active: true,
-            },
-          ]
-        : menus;
-    const reportsMenu = menusWithProductBilling.find((menu) => menu.Menu_Name === "Reports");
+    const reportsMenu = menus.find((menu) => menu.Menu_Name === "Reports");
     // Existing databases receive this menu through migration 0018. Keep the
     // report discoverable for Super Admins while a development database has
     // not yet applied that migration.
     const menusWithDailyTaskReport =
       canViewStaffDailyTaskReport(user) &&
-      !menusWithProductBilling.some((menu) => menu.Menu_Name === "Staff Daily Task Report")
+      !menus.some((menu) => menu.Menu_Name === "Staff Daily Task Report")
         ? [
-            ...menusWithProductBilling,
+            ...menus,
             {
               Id: "staff-daily-task-report",
               Menu_Name: "Staff Daily Task Report",
@@ -695,7 +689,7 @@ function Dashboard() {
               Is_Active: true,
             },
           ]
-        : menusWithProductBilling;
+        : menus;
     const paymentReceivedMenu = menusWithDailyTaskReport.find((menu) =>
       isPaymentReceivedReportMenu(menu.Menu_Name),
     );
@@ -1050,6 +1044,7 @@ function Dashboard() {
             <Schedule
               permissions={menuAccess["Schedule"]}
               onViewDetails={handleViewScheduleDetail}
+              onAddInquiry={handleAddInquiry}
             />
           ) : active === "Schedule Detail" ? (
             <ScheduleDetail
@@ -1086,6 +1081,10 @@ function Dashboard() {
             ) : (
               <p>You do not have permission to view this report.</p>
             )
+          ) : active === "Licence Expiry Report" ? (
+            <LicenseExpiryReport />
+          ) : active === "Sales report" ? (
+            <SalesReport />
           ) : active === "Completed Inquiry Detail" ? (
             <ScheduleDetail
               inquiryId={selectedScheduleInquiryId}
@@ -1099,11 +1098,7 @@ function Dashboard() {
           ) : active === "Payment Pending" ? (
             <PaymentPending />
           ) : active === "Product Billing" ? (
-            canViewProductBilling(user) ? (
-              <ProductBilling />
-            ) : (
-              <p>You do not have permission to view product billing.</p>
-            )
+            <ProductBilling />
           ) : isPaymentReceivedReportMenu(active) ? (
             <PaymentReceivedDetails />
           ) : (
@@ -1218,7 +1213,79 @@ function Dashboard() {
                     )}
                   </small>
                 </div>
+
+                <div className="stat-card stat-card-invoice">
+                  <div className="stat-top">
+                    <div className="stat-icon invoice">
+                      <Icon name="briefcase" size={16} />
+                    </div>
+                  </div>
+                  <p>Total Invoice Amount</p>
+                  <div className="stat-value">
+                    ₹
+                    {Number(stats.totalInvoiceAmount || 0).toLocaleString(
+                      "en-IN",
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                    )}
+                  </div>
+                  <small><b>All saved invoices</b></small>
+                </div>
               </div>
+
+              <section className="dashboard-priority-panel">
+                <div className="dashboard-priority-header">
+                  <div>
+                    <span className="dashboard-priority-kicker">
+                      <Icon name="clock" size={13} /> Attention required
+                    </span>
+                    <h2>In-progress inquiries over 2 days</h2>
+                    <p>Inquiries still marked In Progress two days after creation.</p>
+                  </div>
+                  <span className="dashboard-priority-count">
+                    {stats.overdueInProgressInquiries?.length || 0} overdue
+                  </span>
+                </div>
+                {stats.overdueInProgressInquiries?.length ? (
+                  <div className="dashboard-priority-list">
+                    {stats.overdueInProgressInquiries.map((inquiry) => (
+                      <button
+                        type="button"
+                        className="dashboard-priority-row"
+                        key={inquiry.id}
+                        onClick={() => handleViewScheduleDetail(inquiry.id)}
+                      >
+                        <div className="dashboard-priority-age">
+                          <span>
+                            {inquiry.overdue_basis === "created"
+                              ? "Created on"
+                              : "Active since"}
+                          </span>
+                          <strong>{new Date(inquiry.in_progress_since).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</strong>
+                        </div>
+                        <div className="dashboard-priority-company">
+                          <strong>{inquiry.company_name || "Unknown company"}</strong>
+                          <span>{inquiry.customer_name || "Unknown customer"}</span>
+                        </div>
+                        <div className="dashboard-priority-assignee">
+                          <span>Assigned to</span>
+                          <strong>{inquiry.resource_name || "Unassigned"}</strong>
+                        </div>
+                        <div className="dashboard-priority-products">
+                          {(inquiry.products || []).map((product) => product.product_name || product.product_type_name).filter(Boolean).join(", ") || "No product details"}
+                        </div>
+                        <span className="dashboard-priority-status">
+                          {inProgressLabel(inquiry.in_progress_since)}
+                        </span>
+                        <span className="dashboard-inquiry-arrow">›</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="dashboard-priority-empty">
+                    <Icon name="check" size={16} /> No in-progress inquiries have exceeded two days.
+                  </div>
+                )}
+              </section>
 
               <section className="dashboard-inquiries-panel">
                 <div className="dashboard-inquiries-header">

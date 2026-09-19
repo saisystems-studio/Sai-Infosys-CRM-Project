@@ -43,14 +43,21 @@ export function buildReport(data, filters) {
   const select = rows => rows.filter(row => belongs(row) && inRange(row.date));
   const schedules = select(data.schedules), transactions = select(data.transactions);
   const revenueByInquiry = new Map();
+  const revenueByBill = new Map();
   for (const payment of transactions) {
+    if (payment.billingId) revenueByBill.set(payment.billingId, (revenueByBill.get(payment.billingId) || 0) + payment.amount);
     if (!payment.inquiryId) continue;
     revenueByInquiry.set(payment.inquiryId, (revenueByInquiry.get(payment.inquiryId) || 0) + payment.amount);
   }
   const inquiries = select(data.inquiries).map(row => ({
     ...row,
+    recordType: "Inquiry",
     revenueAmount: revenueByInquiry.get(row.id) || 0,
   }));
+  const productBills = select(data.productBills || []).map(row => ({
+    ...row, recordType: "Product Billing", revenueAmount: revenueByBill.get(row.id) || 0,
+  }));
+  const summaryRows = [...inquiries, ...productBills];
   const customer = data.customers.find(b => b.id === filters.customerId);
   const totalRevenue = transactions.reduce((sum, row) => sum + row.amount, 0);
   const expectedRevenue = inquiries.reduce((sum, row) => sum + row.expectedRevenue, 0);
@@ -99,7 +106,7 @@ export function buildReport(data, filters) {
     { name: "Activity participation", weight: 15, score: clamp(activeMonths / months * 100), description: "Months with activity ÷ months in the selected period." },
   ];
   const engagement = Math.round(components.reduce((sum, row) => sum + row.score * row.weight / 100, 0));
-  return { customer, filters, inquiries, schedules, totalRevenue, expectedRevenue, achievement, scheduleCounts, repeatInquiries, repeatVisits,
+  return { customer, filters, inquiries, productBills, summaryRows, schedules, totalRevenue, expectedRevenue, achievement, scheduleCounts, repeatInquiries, repeatVisits,
     completedInquiries, inProgressInquiries, notStartedInquiries,
     products, resources, revenue, activities, components, engagement, mostInterested: products.find(row => row.inquiries > 0) || null,
     lastInquiry: last(inquiries), lastSchedule: last(schedules), lastFollowUp: last(schedules),

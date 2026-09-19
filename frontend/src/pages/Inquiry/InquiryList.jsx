@@ -5,6 +5,7 @@ import {
   getCustomerInitials,
   getInquiryCreatedDate,
   getInquiryDisplayName,
+  getInquiryFilterFallbackOptions,
   getSourceName,
   getStatusTone,
 } from "./inquiryPresentation";
@@ -819,6 +820,14 @@ function InquiryList({
     loadInquiries();
   }, [loadInquiries]);
 
+  const fallbackFilterOptions = useMemo(
+    () => getInquiryFilterFallbackOptions(inquiries),
+    [inquiries],
+  );
+  const availableStatuses = statuses.length ? statuses : fallbackFilterOptions.statuses;
+  const availableResources = resources.length ? resources : fallbackFilterOptions.resources;
+  const availableProducts = products.length ? products : fallbackFilterOptions.products;
+
   /* =======================================================
      FILTER
      ======================================================= */
@@ -915,7 +924,7 @@ function InquiryList({
       return;
     }
 
-    const matchingStatus = statuses.find((status) =>
+    const matchingStatus = availableStatuses.find((status) =>
       String(status.status_type_name || "")
         .toLowerCase()
         .includes(statusKeyword),
@@ -1099,7 +1108,7 @@ function InquiryList({
           className="filter-select"
         >
           <option value="">All Status</option>
-          {statuses.map((status) => (
+          {availableStatuses.map((status) => (
             <option key={status.Id} value={status.Id}>
               {status.status_type_name}
             </option>
@@ -1112,7 +1121,7 @@ function InquiryList({
           className="filter-select"
         >
           <option value="">All Resources</option>
-          {resources.map((resource) => (
+          {availableResources.map((resource) => (
             <option key={resource.Id} value={resource.Id}>
               {resource.Full_Name}
             </option>
@@ -1125,7 +1134,7 @@ function InquiryList({
           className="filter-select"
         >
           <option value="">All Products</option>
-          {products.map((product) => (
+          {availableProducts.map((product) => (
             <option key={product.Id} value={product.Id}>
               {product.product_type_name}
             </option>

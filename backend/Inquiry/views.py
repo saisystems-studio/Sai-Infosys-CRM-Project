@@ -1,7 +1,9 @@
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from decimal import Decimal
+from django.db import transaction
 from django.db.models import BooleanField, Case, CharField, DateTimeField, DecimalField, ExpressionWrapper, F, OuterRef, Q, Subquery, Sum, Value, When
 from django.db.models.functions import Coalesce
 from rest_framework.response import Response
@@ -20,6 +22,7 @@ from .serializers import (
     CallbackRescheduleSerializer,
     PaymentPendingSerializer,
     PaymentFollowUpSerializer,
+    ProductBillingFollowUpSerializer,
     TaskProgressSaveSerializer,
     CompletedInquiryReportSerializer,
 )
@@ -35,7 +38,7 @@ from .task_progress import (
 from .payment_ledger import approve_payment_detail, record_payment
 from staff.access import HasMenuPermission, get_staff, has_full_access, menu_permission, normalize_role
 from staff.models import StaffDetails
-from .models import InquiryProductDetails_tbl, PaymentDetail, PaymentFollowUp
+from .models import InquiryProductDetails_tbl, PaymentDetail, PaymentFollowUp, ProductBilling
 
 
 class InquiryViewSet(
@@ -172,6 +175,9 @@ class InquiryViewSet(
             .select_related(
                 "Inquiry_Product__Inquiry_Id__Customer_Id",
                 "Inquiry_Product__Inquiry_Id__Resource_Id",
+                "Product_Billing__Customer_Id",
+                "Product_Billing__Product_Id",
+                "Approved_By",
             )
             .prefetch_related(
                 "Inquiry_Product__Inquiry_Id__task_progress__Resource_Id",
@@ -224,6 +230,23 @@ class InquiryViewSet(
     @action(detail=False, methods=["get", "post"], url_path=r"payment-pending/(?P<product_id>[^/.]+)/follow-up")
     def payment_follow_up(self, request, product_id=None):
         self._require_admin(request)
+        if str(product_id).startswith("billing-"):
+            try:
+                billing_id = int(str(product_id).removeprefix("billing-"))
+            except ValueError:
+                return Response({"detail": "Product bill was not found."}, status=404)
+            bill = ProductBilling.objects.filter(pk=billing_id).first()
+            if bill is None:
+                return Response({"detail": "Product bill was not found."}, status=404)
+            if request.method == "GET":
+                return Response(ProductBillingFollowUpSerializer(
+                    bill.payment_follow_ups.all(), many=True,
+                ).data)
+            serializer = ProductBillingFollowUpSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            follow_up = serializer.save(Product_Billing=bill, Created_By=request.user)
+            return Response(ProductBillingFollowUpSerializer(follow_up).data, status=201)
+
         product = (
             InquiryProductDetails_tbl.objects
             .select_related("Inquiry_Id__Customer_Id")
@@ -309,6 +332,7 @@ class InquiryViewSet(
             invoice_amount=serializer.validated_data.get("invoice_amount"),
             revenue_amount=serializer.validated_data["revenue_amount"],
             unpaid_service=serializer.validated_data["unpaid_service"],
+            amc_service=serializer.validated_data["amc_service"],
         )
         return Response(InquiryListSerializer(inquiry, context={"request": request}).data)
 
@@ -337,7 +361,42 @@ class InquiryViewSet(
             .filter(remaining_balance__gt=0)
             .order_by("-Created_On")
         )
-        return Response(PaymentPendingListSerializer(records, many=True).data)
+        inquiry_rows = PaymentPendingListSerializer(records, many=True).data
+        for row in inquiry_rows:
+            row["source"] = "inquiry"
+
+        # Product bills do not have an inquiry/task workflow, but they are
+        # outstanding collections and must be visible in Payment Pending.
+        billing_rows = []
+        for bill in ProductBilling.objects.select_related("Customer_Id", "Product_Id").filter(
+            Payment_Status="Pending"
+        ).order_by(
+            "-Created_On", "-Id"
+        ):
+            billed_total = (bill.Amount or 0) + (bill.GST or 0)
+            remaining_balance = billed_total - (bill.Total_Paid or Decimal("0.00"))
+            if remaining_balance <= 0:
+                continue
+            billing_rows.append({
+                "id": f"billing-{bill.Id}",
+                "Inquiry_Id": None,
+                "customer_name": bill.Customer_Name or bill.Customer_Id.customer_name or "",
+                "company_name": bill.Company_Name or bill.Customer_Id.company_name or "",
+                "product_id": bill.Product_Id_id,
+                "product_name": bill.Product_Id.product_type_name or "Product",
+                "requirement": "",
+                "amount": f"{billed_total:.2f}",
+                "revenue_amount": f"{billed_total:.2f}",
+                "total_paid": f"{bill.Total_Paid:.2f}",
+                "remaining_balance": f"{remaining_balance:.2f}",
+                "latest_payment_type": None,
+                "latest_payment_date": None,
+                "payment_status": "Pending",
+                "created_on": bill.Created_On,
+                "source": "product_billing",
+            })
+
+        return Response(inquiry_rows + billing_rows)
 
     @action(detail=False, methods=["get"], url_path="product-billing")
     def product_billing(self, request):
@@ -355,6 +414,37 @@ class InquiryViewSet(
         self._require_admin(request)
         serializer = PaymentRecordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        if str(product_id).startswith("billing-"):
+            try:
+                billing_id = int(str(product_id).removeprefix("billing-"))
+                with transaction.atomic():
+                    bill = ProductBilling.objects.select_for_update().get(pk=billing_id)
+                    amount = serializer.validated_data["amount"]
+                    payment_type = serializer.validated_data["payment_type"]
+                    billed_total = (bill.Amount or Decimal("0.00")) + (bill.GST or Decimal("0.00"))
+                    total_paid = bill.Total_Paid or Decimal("0.00")
+                    remaining_balance = billed_total - total_paid
+                    if amount > remaining_balance:
+                        raise ValidationError({"amount": "Payment amount cannot exceed the remaining balance."})
+                    if payment_type == "full" and amount != remaining_balance:
+                        raise ValidationError({"amount": "Full Payment must equal the remaining balance."})
+
+                    bill.Total_Paid = total_paid + amount
+                    PaymentDetail.objects.create(
+                        Product_Billing=bill, Amount=amount,
+                        Payment_Type=payment_type, Created_By=request.user,
+                    )
+                    bill.Payment_Status = "Pending"
+                    bill.save(update_fields=["Total_Paid", "Payment_Status"])
+            except (TypeError, ValueError, ProductBilling.DoesNotExist):
+                raise ValidationError("Product bill payment record not found.")
+            return Response({
+                "id": f"billing-{bill.Id}",
+                "total_paid": f"{bill.Total_Paid:.2f}",
+                "remaining_balance": f"{billed_total - bill.Total_Paid:.2f}",
+                "payment_status": bill.Payment_Status,
+            })
+
         product, total_paid, remaining_balance = record_payment(
             product_id=product_id,
             user=request.user,
@@ -382,7 +472,7 @@ class InquiryViewSet(
         return Response({
             "id": detail.Id,
             "approval_status": detail.Approval_Status,
-            "payment_status": detail.Inquiry_Product.Payment_Status,
+            "payment_status": (detail.Product_Billing if detail.Product_Billing_id else detail.Inquiry_Product).Payment_Status,
         })
 
     # ============================================================

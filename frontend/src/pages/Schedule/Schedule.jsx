@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./Schedule.css";
 import {
   formatTaskDuration,
   getDefaultScheduleDateRange,
+  getSchedulePeriodDateRange,
   getScheduleCustomerDisplayName,
   getScheduleDateState,
+  getScheduleFilterOptions,
   getScheduleInitials,
   getTodayDateString,
   getTotalTaskDurationSeconds,
@@ -39,8 +41,11 @@ const getInitialUser = () => {
   }
 };
 
-const Schedule = ({ onViewDetails }) => {
+const Schedule = ({ onViewDetails, onAddInquiry }) => {
   const [inquiries, setInquiries] = useState([]);
+  const [filterMasters, setFilterMasters] = useState({
+    resources: [], statuses: [], products: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [movingInquiryId, setMovingInquiryId] = useState(null);
@@ -48,9 +53,11 @@ const Schedule = ({ onViewDetails }) => {
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [revenueAmount, setRevenueAmount] = useState("");
   const [unpaidService, setUnpaidService] = useState(false);
+  const [amcService, setAmcService] = useState(false);
   const [isAdmin] = useState(getInitialAdminState);
   const [currentUser] = useState(getInitialUser);
   const [durationNow, setDurationNow] = useState(() => new Date());
+  const [datePreset, setDatePreset] = useState("today");
   const [filters, setFilters] = useState(() => ({
     ...getDefaultScheduleDateRange(),
     staffId: "",
@@ -65,6 +72,14 @@ const Schedule = ({ onViewDetails }) => {
   const isSuperAdmin =
     isAdmin &&
     (currentUser.staff_id == null || normalizedRole === "super admin");
+
+  const selectDatePreset = (preset) => {
+    setDatePreset(preset);
+    setFilters((current) => ({
+      ...current,
+      ...getSchedulePeriodDateRange(preset),
+    }));
+  };
 
   // ============================================================
   // FETCH LOGGED-IN STAFF SCHEDULE
@@ -109,6 +124,26 @@ const Schedule = ({ onViewDetails }) => {
   // ============================================================
   useEffect(() => {
     fetchSchedule();
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("crm_access_token");
+    if (!token) return undefined;
+    let active = true;
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.allSettled([
+      axios.get(`${API_BASE_URL}/inquiries/resources/`, { headers }),
+      axios.get(`${API_BASE_URL}/status-types/`, { headers }),
+      axios.get(`${API_BASE_URL}/product-types/`, { headers }),
+    ]).then(([resources, statuses, products]) => {
+      if (!active) return;
+      setFilterMasters({
+        resources: resources.status === "fulfilled" && Array.isArray(resources.value.data) ? resources.value.data : [],
+        statuses: statuses.status === "fulfilled" && Array.isArray(statuses.value.data) ? statuses.value.data : [],
+        products: products.status === "fulfilled" && Array.isArray(products.value.data) ? products.value.data : [],
+      });
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -223,13 +258,15 @@ const Schedule = ({ onViewDetails }) => {
     setInvoiceAmount(defaults.invoiceAmount);
     setRevenueAmount(defaults.revenueAmount);
     setUnpaidService(false);
+    setAmcService(false);
     setError("");
   };
 
   const handleMoveToPaymentPending = async () => {
     if (!paymentPendingInquiry) return;
 
-    const validationError = unpaidService
+    const noChargeService = unpaidService || amcService;
+    const validationError = noChargeService
       ? ""
       : validateInvoiceAmount(invoiceAmount) ||
         validateRevenueAmount(revenueAmount);
@@ -245,7 +282,7 @@ const Schedule = ({ onViewDetails }) => {
       const token = localStorage.getItem("crm_access_token");
       await axios.post(
         `${API_BASE_URL}/inquiries/${paymentPendingInquiry.id}/move-to-payment-pending/`,
-        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService),
+        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService, amcService),
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
@@ -253,9 +290,10 @@ const Schedule = ({ onViewDetails }) => {
       setInvoiceAmount("");
       setRevenueAmount("");
       setUnpaidService(false);
+      setAmcService(false);
       await fetchSchedule();
     } catch (err) {
-      setError(getPaymentPendingError(err, unpaidService));
+      setError(getPaymentPendingError(err, noChargeService));
     } finally {
       setMovingInquiryId(null);
     }
@@ -264,40 +302,10 @@ const Schedule = ({ onViewDetails }) => {
   // ============================================================
   // FILTER OPTIONS
   // ============================================================
-  const staffOptions = inquiries
-    .filter((inquiry) => inquiry.Resource_Id && inquiry.resource_name)
-    .reduce((options, inquiry) => {
-      const value = String(inquiry.Resource_Id);
-      if (!options.some((option) => option.value === value)) {
-        options.push({ value, label: inquiry.resource_name });
-      }
-      return options;
-    }, [])
-    .sort((left, right) => left.label.localeCompare(right.label));
-
-  const statusOptions = [
-    ...new Set(inquiries.map((inquiry) => inquiry.status_name).filter(Boolean)),
-  ].sort();
-
-  // Get unique product options from all inquiries - FIXED
-  const productOptions = [
-    ...new Set(
-      inquiries
-        .flatMap((inquiry) => {
-          if (!inquiry.products || !Array.isArray(inquiry.products)) return [];
-          return inquiry.products.map((product) => {
-            return (
-              product.product_name ||
-              product.name ||
-              product.product_type_name ||
-              product.title ||
-              String(product.id)
-            );
-          });
-        })
-        .filter(Boolean),
-    ),
-  ].sort();
+  const { staff: staffOptions, statuses: statusOptions, products: productOptions } = useMemo(
+    () => getScheduleFilterOptions({ ...filterMasters, inquiries }),
+    [filterMasters, inquiries],
+  );
 
   // ============================================================
   // FILTERED INQUIRIES
@@ -428,31 +436,22 @@ const Schedule = ({ onViewDetails }) => {
 
       <div className="schedule-filters" aria-label="Schedule filters">
         <label>
-          From date
-          <input
-            type="date"
-            value={filters.fromDate}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                fromDate: event.target.value || getTodayDateString(new Date()),
-              }))
-            }
-          />
+          Period
+          <select value={datePreset} onChange={(event) => selectDatePreset(event.target.value)}>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="today-yesterday">Yesterday &amp; Today</option>
+            <option value="last-7-days">Last 7 days</option>
+            <option value="next-month">Next month</option>
+            <option value="this-month">This month</option>
+            <option value="last-month">Last month</option>
+            <option value="custom">Mention period</option>
+          </select>
         </label>
-        <label>
-          To date
-          <input
-            type="date"
-            value={filters.toDate}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                toDate: event.target.value || getTodayDateString(new Date()),
-              }))
-            }
-          />
-        </label>
+        {datePreset === "custom" && <>
+          <label>From date<input type="date" value={filters.fromDate} onChange={(event) => setFilters((current) => ({ ...current, fromDate: event.target.value }))} /></label>
+          <label>To date<input type="date" value={filters.toDate} min={filters.fromDate || undefined} onChange={(event) => setFilters((current) => ({ ...current, toDate: event.target.value }))} /></label>
+        </>}
         {isAdmin && (
           <label>
             Staff
@@ -530,6 +529,7 @@ const Schedule = ({ onViewDetails }) => {
                 status: "",
                 product: "",
               });
+              setDatePreset("today");
             }}
           >
             Clear filters
@@ -830,8 +830,8 @@ const Schedule = ({ onViewDetails }) => {
               <div>
                 <span className="payment-pending-eyebrow">Confirm status</span>
                 <h2>
-                  {unpaidService
-                    ? "Complete Unpaid Service"
+                  {unpaidService || amcService
+                    ? amcService ? "Complete AMC Service" : "Complete Unpaid Service"
                     : "Move to Payment Pending"}
                 </h2>
               </div>
@@ -851,14 +851,31 @@ const Schedule = ({ onViewDetails }) => {
               <input
                 type="checkbox"
                 checked={unpaidService}
-                onChange={(event) => setUnpaidService(event.target.checked)}
+                onChange={(event) => {
+                  setUnpaidService(event.target.checked);
+                  if (event.target.checked) setAmcService(false);
+                }}
               />
               <span>
                 <strong>Unpaid Service</strong>
                 <small>Complete without creating a pending payment</small>
               </span>
             </label>
-            {!unpaidService && (
+            <label className="payment-pending-unpaid">
+              <input
+                type="checkbox"
+                checked={amcService}
+                onChange={(event) => {
+                  setAmcService(event.target.checked);
+                  if (event.target.checked) setUnpaidService(false);
+                }}
+              />
+              <span>
+                <strong>AMC</strong>
+                <small>Complete without creating a pending payment and mark it for reports</small>
+              </span>
+            </label>
+            {!unpaidService && !amcService && (
               <div className="payment-pending-fields">
                 <div>
                   <label
@@ -917,13 +934,36 @@ const Schedule = ({ onViewDetails }) => {
               >
                 {movingInquiryId === paymentPendingInquiry.id
                   ? "Saving..."
-                  : unpaidService
+                  : unpaidService || amcService
                     ? "Complete"
                     : "Confirm & Save"}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {onAddInquiry && (
+        <button
+          type="button"
+          className="fab-button"
+          onClick={onAddInquiry}
+          aria-label="Add new inquiry"
+          title="Add new inquiry"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
       )}
     </div>
   );

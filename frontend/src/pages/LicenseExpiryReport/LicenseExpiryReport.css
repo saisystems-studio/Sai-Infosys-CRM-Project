@@ -1,0 +1,26 @@
+.license-expiry-report-page { max-width: 1240px; margin: 0 auto; padding: 14px 18px 28px; color: #17233a; }
+.license-expiry-report-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 22px; border-radius: 10px; background: linear-gradient(118deg, #334f72, #5651db); color: #fff; box-shadow: 0 6px 16px rgba(39, 59, 111, .12); }
+.license-expiry-report-eyebrow { display: block; margin-bottom: 3px; color: #8ff2df; font-size: 9px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.license-expiry-report-header h1 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.2; }
+.license-expiry-report-header p { margin: 3px 0 0; font-size: 12px; font-weight: 400; opacity: .93; }
+.license-expiry-report-total { min-width: 126px; padding-left: 20px; border-left: 1px solid rgba(255,255,255,.32); text-align: center; }
+.license-expiry-report-total strong { display: block; font-size: 22px; font-weight: 500; line-height: 1; }
+.license-expiry-report-total span { display: block; margin-top: 4px; font-size: 10px; font-weight: 400; }
+.license-expiry-report-filters { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding: 9px 14px; border: 1px solid #e4e9f2; border-radius: 9px; background: #fff; box-shadow: 0 2px 6px rgba(30, 50, 88, .04); }
+.license-expiry-report-filters label { display: grid; gap: 3px; min-width: 190px; color: #52617b; font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.license-expiry-report-filters select, .license-expiry-report-filters input { width: 100%; height: 34px; padding: 0 10px; border: 1px solid #cfd9e8; border-radius: 6px; background: #fff; color: #1f3150; font: inherit; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.license-expiry-report-filters .report-export-actions button { height: 34px; padding: 0 12px; border: 1px solid #cfd9e8; border-radius: 6px; background: #fff; color: #344cbe; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.license-expiry-report-table-wrap { margin-top: 10px; overflow-x: auto; border: 1px solid #e1e7f0; border-radius: 9px; background: #fff; box-shadow: 0 3px 10px rgba(25, 47, 85, .04); }
+.license-expiry-report-table { min-width: 820px; }
+.license-expiry-report-table-head, .license-expiry-report-table-row { display: grid; grid-template-columns: 1.5fr 1.1fr 1.1fr 1.1fr 1fr; align-items: center; gap: 14px; padding: 11px 18px; }
+.license-expiry-report-table-head { background: #f5f8fc; color: #5e6d88; font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.license-expiry-report-table-row { border-top: 1px solid #edf0f5; color: #2a3a55; font-size: 13px; font-weight: 400; }
+.license-expiry-report-table-row strong { color: #172b4d; font-weight: 400; }
+.license-expiry-report-table-row em { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #eef2ff; color: #344cbe; font-style: normal; font-size: 12px; font-weight: 400; }
+.license-expiry-report-table-row time { color: #c45123; font-weight: 400; }
+.license-expiry-report-state, .license-expiry-report-empty, .license-expiry-report-error { display: flex; min-height: 180px; margin-top: 10px; align-items: center; justify-content: center; flex-direction: column; gap: 6px; border: 1px solid #e1e7f0; border-radius: 9px; background: #fff; color: #61718d; text-align: center; }
+.license-expiry-report-empty strong { color: #172b4d; font-size: 16px; font-weight: 400; }
+.license-expiry-report-error { color: #ad3a37; }.license-expiry-report-error button { padding: 8px 16px; border: 0; border-radius: 6px; background: #285de8; color: #fff; cursor: pointer; }
+.license-expiry-report-spinner { width: 20px; height: 20px; border: 3px solid #dce5fa; border-top-color: #285de8; border-radius: 50%; animation: license-expiry-spin .75s linear infinite; }
+@keyframes license-expiry-spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) { .license-expiry-report-page { padding: 16px 12px 28px; }.license-expiry-report-header { align-items: flex-start; flex-direction: column; }.license-expiry-report-total { padding: 12px 0 0; border-left: 0; border-top: 1px solid rgba(255,255,255,.32); text-align: left; }.license-expiry-report-filters label { min-width: 100%; } }

@@ -55,23 +55,27 @@ class CustomerIdentifierValidationTests(TestCase):
         self.customer.contacts.create(contact_name="Contact", contact_number="9876543210", created_by=self.user)
         self.customer.licenses.create(tally_serial_number="TALLY123", created_by=self.user)
 
-    def test_rejects_existing_identifiers(self):
-        for field, rows in [
-            ("contacts", [{"contact_name": "Other", "contact_number": "9876543210"}]),
-            ("licenses", [{"tally_serial_number": " tally123 "}]),
-        ]:
-            serializer = CustomerDetailsSerializer(data={field: rows})
-            self.assertFalse(serializer.is_valid())
-            self.assertIn("already exists", str(serializer.errors[field]))
+    def test_rejects_existing_contact_number(self):
+        serializer = CustomerDetailsSerializer(data={
+            "contacts": [{"contact_name": "Other", "contact_number": "9876543210"}],
+        })
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("already exists", str(serializer.errors["contacts"]))
 
-    def test_rejects_repeated_rows(self):
-        for field, row in [
-            ("contacts", {"contact_name": "New", "contact_number": "9123456780"}),
-            ("licenses", {"tally_serial_number": "NEW123"}),
-        ]:
-            serializer = CustomerDetailsSerializer(data={field: [row, row]})
-            self.assertFalse(serializer.is_valid())
-            self.assertIn(field, serializer.errors)
+    def test_rejects_repeated_contact_numbers(self):
+        row = {"contact_name": "New", "contact_number": "9123456780"}
+        serializer = CustomerDetailsSerializer(data={"contacts": [row, row]})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("contacts", serializer.errors)
+
+    def test_allows_duplicate_license_serial_numbers(self):
+        serializer = CustomerDetailsSerializer(data={
+            "licenses": [
+                {"tally_serial_number": "TALLY123"},
+                {"tally_serial_number": "TALLY123"},
+            ],
+        })
+        self.assertTrue(serializer.is_valid(), serializer.errors)
 
     def test_allows_own_identifiers_and_blank_serials(self):
         serializer = CustomerDetailsSerializer(self.customer, data={

@@ -11,6 +11,7 @@ import "./PaymentPending.css";
 import { applyRecordedPayment } from "./paymentPendingState";
 import { authorizedPaymentFetch } from "./paymentPendingApi";
 import { canRecordPayment } from "./paymentApprovalAccess";
+import { buildProductBillDetailSummary } from "./productBillDetailPresentation";
 
 const API_BASE = "/crm/api";
 
@@ -54,6 +55,8 @@ const getPaymentDate = (payment) =>
   payment?.latest_payment_date ||
   "";
 
+const isProductBill = (payment) => payment?.source === "product_billing";
+
 export default function PaymentPending() {
   const currentUser = useMemo(() => {
     try {
@@ -67,6 +70,7 @@ export default function PaymentPending() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [selectedBilling, setSelectedBilling] = useState(null);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
@@ -80,6 +84,9 @@ export default function PaymentPending() {
   const [companyFilter, setCompanyFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const selectedBillingSummary = selectedBilling
+    ? buildProductBillDetailSummary(selectedBilling)
+    : null;
 
   const productOptions = useMemo(
     () =>
@@ -170,6 +177,61 @@ export default function PaymentPending() {
     setPaymentType("full");
     setAmount(payment.remaining_balance);
     setError("");
+  };
+
+  const openProductBillDetail = async (payment) => {
+    setDetailLoading(true);
+    setError("");
+    try {
+      const response = await authorizedPaymentFetch(
+        `${API_BASE}/inquiries/payment-pending/${payment.id}/follow-up/`,
+        {},
+        { apiUrl: API_BASE },
+      );
+      const followUps = await response.json();
+      if (!response.ok) throw new Error(followUps.detail || "Unable to load bill follow-ups.");
+      setSelectedBilling({ ...payment, followUps });
+      setFollowUpDate(new Date().toISOString().split("T")[0]);
+      setFollowUpType("call");
+      setFollowUpNotes("");
+    } catch (detailError) {
+      setError(detailError.message);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const submitProductBillFollowUp = async (event) => {
+    event.preventDefault();
+    if (!selectedBilling) return;
+    try {
+      setFollowUpSaving(true);
+      setError("");
+      const response = await authorizedPaymentFetch(
+        `${API_BASE}/inquiries/payment-pending/${selectedBilling.id}/follow-up/`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            FollowUp_Date: followUpDate,
+            FollowUp_Type: followUpType,
+            Notes: followUpNotes,
+          }),
+        },
+        { apiUrl: API_BASE },
+      );
+      const followUp = await response.json();
+      if (!response.ok) throw new Error(followUp.detail || "Unable to save bill follow-up.");
+      setSelectedBilling((current) => current && ({
+        ...current,
+        followUps: [followUp, ...(current.followUps || [])],
+      }));
+      setFollowUpNotes("");
+    } catch (saveError) {
+      setError(saveError.message);
+    } finally {
+      setFollowUpSaving(false);
+    }
   };
 
   const openInquiryDetail = async (payment) => {
@@ -402,6 +464,7 @@ export default function PaymentPending() {
                   <th>Customer</th>
                   <th>Company</th>
                   <th>Product</th>
+                  <th>Source</th>
                   <th>Date</th>
                   <th className="payment-pending-amount-column">
                     Revenue Amount
@@ -417,6 +480,11 @@ export default function PaymentPending() {
                     <td>{payment.customer_name || "-"}</td>
                     <td>{payment.company_name || "-"}</td>
                     <td>{getPaymentProduct(payment)}</td>
+                    <td>
+                      {isProductBill(payment) ? (
+                        <span className="payment-pending-source">Product bill</span>
+                      ) : "Inquiry"}
+                    </td>
                     <td>{formatDate(getPaymentDate(payment))}</td>
                     <td className="payment-pending-amount-column">
                       {formatAmount(payment.revenue_amount)}
@@ -432,7 +500,7 @@ export default function PaymentPending() {
                         <button
                           type="button"
                           className="payment-view-btn"
-                          onClick={() => openInquiryDetail(payment)}
+                          onClick={() => isProductBill(payment) ? openProductBillDetail(payment) : openInquiryDetail(payment)}
                           aria-label={`View ${payment.customer_name || "inquiry"} details`}
                           title="View inquiry tasks"
                         >
@@ -738,6 +806,71 @@ export default function PaymentPending() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {selectedBilling && (
+        <div className="payment-pending-modal-backdrop" onMouseDown={() => setSelectedBilling(null)}>
+          <section
+            className="payment-pending-detail-modal payment-detail-reference product-bill-detail-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Product bill details"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="payment-pending-modal-header">
+              <div>
+                <span className="payment-approval-kicker">PRODUCT BILL DETAILS</span>
+                <h2>{selectedBillingSummary.customer}</h2>
+                <p className="company-name">{selectedBillingSummary.company}</p>
+              </div>
+              <button type="button" className="payment-pending-close" onClick={() => setSelectedBilling(null)}>×</button>
+            </div>
+            <h3 className="payment-detail-section-title">Details Summary</h3>
+            <dl className="payment-pending-bill-details payment-pending-detail-summary">
+              <div><dt>Product</dt><dd>{selectedBillingSummary.product}</dd></div>
+              <div><dt>Bill amount</dt><dd>{formatAmount(selectedBillingSummary.billAmount)}</dd></div>
+              <div><dt>Remaining</dt><dd>{formatAmount(selectedBillingSummary.remainingAmount)}</dd></div>
+            </dl>
+            <section className="payment-pending-task-section">
+              <h3 className="payment-detail-section-title">Task Updates</h3>
+              <form className="payment-pending-bill-followup payment-detail-update-grid" onSubmit={submitProductBillFollowUp}>
+              <fieldset className="payment-detail-panel product-bill-followup-schedule" disabled={followUpSaving}>
+              <h4><FiCalendar aria-hidden="true" /> Schedule Follow-up</h4>
+              {error && <div className="payment-approval-error">{error}</div>}
+              <label className="product-bill-followup-date">
+                <span>Follow-up date</span>
+                <input type="date" value={followUpDate} required disabled={followUpSaving} onChange={(event) => setFollowUpDate(event.target.value)} />
+              </label>
+              <fieldset className="product-bill-followup-type">
+                <legend>Follow-up type</legend>
+                {['call', 'email', 'meeting'].map((type) => (
+                  <label key={type}><input type="radio" value={type} checked={followUpType === type} onChange={() => setFollowUpType(type)} />{type[0].toUpperCase() + type.slice(1)}</label>
+                ))}
+              </fieldset>
+              </fieldset>
+              <fieldset className="payment-detail-panel product-bill-followup-add-notes" disabled={followUpSaving}>
+              <h4><FiEdit3 aria-hidden="true" /> Add Notes</h4>
+              <label className="product-bill-followup-notes">
+                <span>Notes</span>
+                <textarea value={followUpNotes} maxLength="500" rows="3" disabled={followUpSaving} onChange={(event) => setFollowUpNotes(event.target.value)} placeholder="Enter payment follow-up details and next steps..." />
+              </label>
+              <button type="submit" className="payment-received-btn product-bill-followup-save" disabled={followUpSaving}>{followUpSaving ? 'Saving...' : 'Save follow-up'}</button>
+              </fieldset>
+            </form>
+            </section>
+            <section className="payment-pending-bill-history product-bill-history payment-detail-history-grid">
+              <h3>Payment Follow-up History</h3>
+              {detailLoading ? <p>Loading follow-ups...</p> : selectedBilling.followUps?.length ? (
+                selectedBilling.followUps.map((followUp) => (
+                  <div key={followUp.FollowUp_Id} className="payment-pending-bill-history-item">
+                    <strong>{formatDate(followUp.FollowUp_Date)} · {followUp.FollowUp_Type}</strong>
+                    <span>{followUp.Notes || 'No notes added.'}</span>
+                  </div>
+                ))
+              ) : <p>No payment follow-ups recorded.</p>}
+            </section>
+          </section>
         </div>
       )}
 

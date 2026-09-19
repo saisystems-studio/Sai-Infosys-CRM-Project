@@ -303,3 +303,38 @@ class InquiryTaskWriteApiTests(APITestCase):
         self.assertEqual(str(product.Revenue_Amount), "0.00")
         self.assertEqual(product.Payment_Status, "Not Required")
         self.assertFalse(response.data["can_move_to_payment_pending"])
+
+    def test_amc_service_completes_with_zero_amounts_and_saves_amc_flag(self):
+        InquiryTaskProgress.objects.create(
+            Inquiry_Id=self.inquiry,
+            Resource_Id=self.resource,
+            Work_Date=date(2026, 8, 27),
+            Start_Time="2026-08-27T10:00:00Z",
+            End_Time="2026-08-27T10:15:00Z",
+            Progress_Notes="AMC visit completed.",
+            Task_Status=TaskStatus.PROGRESS_SAVED,
+            Created_By=self.user,
+        )
+        product = InquiryProductDetails_tbl.objects.create(
+            Inquiry_Id=self.inquiry,
+            Quantity=1,
+            Rate=100,
+            Amount=100,
+            Created_By=self.user,
+        )
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            self.payment_pending_url(),
+            {"amc_service": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.inquiry.refresh_from_db()
+        product.refresh_from_db()
+        self.assertEqual(self.inquiry.Status_Id.status_type_name, "Completed")
+        self.assertEqual(str(product.Invoice_Amount), "0.00")
+        self.assertEqual(str(product.Revenue_Amount), "0.00")
+        self.assertEqual(product.Payment_Status, "Not Required")
+        self.assertTrue(product.Is_AMC)

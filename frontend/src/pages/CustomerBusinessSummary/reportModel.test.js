@@ -33,6 +33,25 @@ const data = {
 };
 const filters = { customerId: "c1", from: "2026-01-01", to: "2026-01-31" };
 
+test("product bills filter by customer and bill date without increasing inquiry counts", () => {
+  const bill = { id: "b-1", customerId: "c1", date: "2026-01-31", product: "License", expectedRevenue: 2360, totalPaid: 900 };
+  const payment = { id: "p-1", billingId: "b-1", customerId: "c1", date: "2026-01-31", product: "License", category: "Product Sales", amount: 500 };
+  const report = buildReport({ ...data, productBills: [bill,
+    { ...bill, id: "b-2", customerId: "c2" },
+    { ...bill, id: "b-3", date: "2025-12-31" },
+  ], transactions: [...data.transactions, payment,
+    { ...payment, id: "p-2", date: "2026-02-01", amount: 400 },
+    { ...payment, id: "p-3", customerId: "c2", amount: 700 },
+    { ...payment, id: "p-4", billingId: "b-3", amount: 100 },
+  ] }, filters);
+  assert.equal(report.productBills.length, 1);
+  assert.equal(report.productBills[0].revenueAmount, 500);
+  assert.equal(report.inquiries.length, 2);
+  assert.equal(report.summaryRows.length, 3);
+  assert.equal(report.summaryRows.find(row => row.id === "b-1").recordType, "Product Billing");
+  assert.equal(report.totalRevenue, 1100);
+});
+
 test("inquiry revenue sums only its own payments in the selected customer and period", () => {
   const payment = { ...data.transactions[0], inquiryId: "i1" };
   const report = buildReport({ ...data, transactions: [

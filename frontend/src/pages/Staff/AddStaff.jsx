@@ -11,6 +11,12 @@ import {
 import { getStaffPhoneError, normalizeStaffPhone } from "./staffPhone";
 
 const API_URL = import.meta.env.VITE_API_URL || "/crm/api";
+const STAFF_STEPS = [
+  ["Staff Details", "Personal & employment info"],
+  ["Login Details", "Account credentials"],
+  ["Menu Permissions", "System access rights"],
+  ["Review & Create", "Confirm and save"],
+];
 
 function AddStaff({ onCancel, editData = null, isEdit = false }) {
   const [formData, setFormData] = useState({
@@ -40,6 +46,7 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeStep, setActiveStep] = useState(1);
 
   const PERMISSION_TYPES = {
     VIEW: "view",
@@ -974,16 +981,35 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                 : "Create a new staff account and configure system access permissions"}
             </p>
           </div>
-          <div className="header-badge">
-            <span className={`badge ${isEdit ? "edit" : ""}`}>
-              {isEdit ? "Edit" : "New"}
-            </span>
+          <div className="header-active-toggle">
+            <label className="active-toggle">
+              <input
+                type="checkbox"
+                name="Is_Active"
+                checked={formData.Is_Active}
+                onChange={handleChange}
+              />
+              <span className="toggle-slider" />
+              <span className="toggle-label">Active</span>
+            </label>
+            <small>Staff can access the system</small>
           </div>
         </div>
       </div>
 
+      <nav className="staff-wizard" aria-label="Add staff steps">
+        {STAFF_STEPS.map(([title, description], index) => {
+          const step = index + 1;
+          return <div className={`wizard-step ${activeStep === step ? "is-active" : ""} ${activeStep > step ? "is-complete" : ""}`} key={title}>
+            <button type="button" onClick={() => setActiveStep(step)} aria-current={activeStep === step ? "step" : undefined}>{step}</button>
+            <div><strong>{title}</strong><span>{description}</span></div>
+          </div>;
+        })}
+      </nav>
+
       <form className="add-staff-form" onSubmit={handleSubmit}>
         {/* PERSONAL DETAILS */}
+        {activeStep === 1 && <>
         <div className="staff-form-card">
           <div className="form-card-header">
             <div className="form-card-header-left">
@@ -1038,11 +1064,13 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                 <small>JPG, PNG or WEBP • Max 2MB</small>
               </div>
 
-              <div
-                className="staff-document-upload"
+              <div className="staff-document-area">
+                <div
+                  className="staff-document-upload"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDocumentDrop}
-              >
+                >
+                <div className="document-upload-header">
                 <div className="document-upload-copy">
                   <strong>Staff documents</strong>
                   <small>PDF, Office, text or image files · Max 10 MB each</small>
@@ -1056,8 +1084,7 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                     onChange={handleDocumentChange}
                   />
                 </label>
-              </div>
-            </div>
+                </div>
 
             {(existingDocuments.length > 0 || documents.length > 0) && (
               <div className="staff-document-list">
@@ -1107,6 +1134,9 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                 {documentErrors.map((message) => <span key={message}>{message}</span>)}
               </div>
             )}
+                </div>
+              </div>
+            </div>
 
             <div className="form-grid">
               <div className="form-field">
@@ -1211,23 +1241,13 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
               </div>
             </div>
 
-            <div className="form-toggle-group">
-              <label className="active-toggle">
-                <input
-                  type="checkbox"
-                  name="Is_Active"
-                  checked={formData.Is_Active}
-                  onChange={handleChange}
-                />
-                <span className="toggle-slider"></span>
-                <span className="toggle-label">Staff is Active</span>
-              </label>
-            </div>
           </div>
         </div>
 
+        </>}
+
         {/* LOGIN CREDENTIALS - Only show for Add mode */}
-        {!isEdit && (
+        {activeStep === 2 && !isEdit && (
           <div className="staff-form-card">
             <div className="form-card-header">
               <div className="form-card-header-left">
@@ -1291,6 +1311,7 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
         )}
 
         {/* MENU PERMISSIONS */}
+        {activeStep === 3 && (
         <div className="staff-form-card permission-card">
           <div className="form-card-header permission-header">
             <div className="form-card-header-left">
@@ -1430,6 +1451,24 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
             </div>
           </div>
         </div>
+        )}
+
+        {activeStep === 4 && (
+          <div className="staff-form-card review-card">
+            <div className="form-card-header">
+              <div className="form-card-header-left">
+                <span className="form-card-icon">✓</span>
+                <div><h2>Review staff member</h2><p>Confirm the details before saving.</p></div>
+              </div>
+            </div>
+            <div className="form-card-body review-grid">
+              <div><span>Name</span><strong>{formData.Full_Name || "Not provided"}</strong></div>
+              <div><span>Role</span><strong>{formData.Role || "Not provided"}</strong></div>
+              <div><span>Email</span><strong>{formData.Email_Address || "Not provided"}</strong></div>
+              <div><span>Permissions selected</span><strong>{selectedCount} of {totalPermissions}</strong></div>
+            </div>
+          </div>
+        )}
 
         {/* MESSAGES */}
         {error && (
@@ -1490,7 +1529,8 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
           >
             Cancel
           </button>
-          <button type="submit" className="save-staff-button" disabled={saving}>
+          {activeStep > 1 && <button type="button" className="previous-staff-button" onClick={() => setActiveStep((step) => step - 1)} disabled={saving}>Back</button>}
+          {activeStep < 4 ? <button type="button" className="save-staff-button" onClick={() => setActiveStep((step) => step + 1)}>Continue →</button> : <button type="submit" className="save-staff-button" disabled={saving}>
             {saving ? (
               <>
                 <span className="spinner"></span>
@@ -1509,7 +1549,7 @@ function AddStaff({ onCancel, editData = null, isEdit = false }) {
                 {isEdit ? "Update Staff" : "Save Staff"}
               </>
             )}
-          </button>
+          </button>}
         </div>
       </form>
     </div>

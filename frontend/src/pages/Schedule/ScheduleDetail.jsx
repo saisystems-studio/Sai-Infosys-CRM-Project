@@ -203,6 +203,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
   const lastSavedInvoiceAmount = useRef(null);
   const [revenueAmount, setRevenueAmount] = useState("");
   const [unpaidService, setUnpaidService] = useState(false);
+  const [amcService, setAmcService] = useState(false);
   const [movingToPaymentPending, setMovingToPaymentPending] = useState(false);
   const [paymentPendingError, setPaymentPendingError] = useState("");
   const [paymentPendingSuccess, setPaymentPendingSuccess] = useState("");
@@ -352,6 +353,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
     if (
       !inquiryId ||
       unpaidService ||
+      amcService ||
       invoiceAmount === lastSavedInvoiceAmount.current ||
       validateInvoiceAmount(invoiceAmount)
     ) {
@@ -378,10 +380,11 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
       invoiceAmount,
       INVOICE_AUTOSAVE_DELAY_MS,
     );
-  }, [getHeaders, inquiryId, invoiceAmount, unpaidService]);
+  }, [getHeaders, inquiryId, invoiceAmount, unpaidService, amcService]);
 
   const handleMoveToPaymentPending = async () => {
-    const invoiceValidationError = unpaidService
+    const noChargeService = unpaidService || amcService;
+    const invoiceValidationError = noChargeService
       ? ""
       : validateInvoiceAmount(invoiceAmount);
     if (invoiceValidationError) {
@@ -389,7 +392,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
       return;
     }
 
-    const validationError = unpaidService ? "" : validateRevenueAmount(revenueAmount);
+    const validationError = noChargeService ? "" : validateRevenueAmount(revenueAmount);
     if (validationError) {
       setPaymentPendingError(validationError);
       return;
@@ -402,19 +405,21 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
 
       await axios.post(
         `${API_BASE_URL}/inquiries/${inquiry.id}/move-to-payment-pending/`,
-        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService),
+        buildPaymentPendingPayload(invoiceAmount, revenueAmount, unpaidService, amcService),
         { headers: getHeaders() },
       );
 
       await fetchDetailData();
       setShowPaymentPendingConfirmation(false);
       setPaymentPendingSuccess(
-        unpaidService
-          ? "Unpaid service completed successfully."
+        noChargeService
+          ? amcService
+            ? "AMC service completed successfully."
+            : "Unpaid service completed successfully."
           : "Inquiry moved to Payment Pending.",
       );
     } catch (err) {
-      setPaymentPendingError(getPaymentPendingError(err, unpaidService));
+      setPaymentPendingError(getPaymentPendingError(err, noChargeService));
     } finally {
       setMovingToPaymentPending(false);
     }
@@ -1539,6 +1544,7 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
               checked={unpaidService}
               onChange={(event) => {
                 setUnpaidService(event.target.checked);
+                if (event.target.checked) setAmcService(false);
                 setPaymentPendingError("");
               }}
               disabled={movingToPaymentPending}
@@ -1546,7 +1552,21 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
             <span>Unpaid Service</span>
           </label>
 
-          {!unpaidService && <div className="detail-payment-fields">
+          <label className="detail-unpaid-service">
+            <input
+              type="checkbox"
+              checked={amcService}
+              onChange={(event) => {
+                setAmcService(event.target.checked);
+                if (event.target.checked) setUnpaidService(false);
+                setPaymentPendingError("");
+              }}
+              disabled={movingToPaymentPending}
+            />
+            <span>AMC</span>
+          </label>
+
+          {!unpaidService && !amcService && <div className="detail-payment-fields">
             <label>
               <span>Invoice Amount</span>
               <div className="detail-payment-input-wrap">
@@ -1602,8 +1622,8 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
               disabled={movingToPaymentPending}
             >
               {movingToPaymentPending
-                ? unpaidService ? "Completing..." : "Moving..."
-                : unpaidService ? "Complete" : "Move to Payment Pending"}
+                ? unpaidService || amcService ? "Completing..." : "Moving..."
+                : unpaidService || amcService ? "Complete" : "Move to Payment Pending"}
             </button>
           </div>
         </div>
@@ -1628,8 +1648,10 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
           >
             <h2 id="payment-confirm-title">Complete this task process?</h2>
             <p id="payment-confirm-description">
-              {unpaidService
-                ? "Are you sure you want to complete this unpaid service? Invoice and revenue amounts will be saved as zero."
+              {unpaidService || amcService
+                ? amcService
+                  ? "Are you sure you want to complete this AMC service? Invoice and revenue amounts will be saved as zero, and AMC will be shown in reports."
+                  : "Are you sure you want to complete this unpaid service? Invoice and revenue amounts will be saved as zero."
                 : "Are you sure you want to move this inquiry to Payment Pending? After moving, the task process is completed and you cannot add or update tasks."}
             </p>
             <div className="payment-confirm-actions">
@@ -1648,8 +1670,8 @@ const ScheduleDetail = ({ inquiryId, onBack, autoStartTask = false }) => {
                 disabled={movingToPaymentPending}
               >
                 {movingToPaymentPending
-                  ? unpaidService ? "Completing..." : "Moving..."
-                  : unpaidService ? "Complete" : "Move to Payment Pending"}
+                  ? unpaidService || amcService ? "Completing..." : "Moving..."
+                  : unpaidService || amcService ? "Complete" : "Move to Payment Pending"}
               </button>
             </div>
           </section>

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { getCompletedReportDateRange } from "../CompletedInquiryReport/completedInquiryReport";
+import { exportReport } from "../../reportExport";
 import "./StaffDailyTaskReport.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/crm/api";
@@ -24,6 +25,7 @@ export default function StaffDailyTaskReport() {
   const [report, setReport] = useState({ tasks: [], staff: [], summary: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState("");
 
   const loadReport = async () => {
     setLoading(true);
@@ -72,6 +74,17 @@ export default function StaffDailyTaskReport() {
     total_amount: report.summary?.total_amount || 0,
     revenue_amount: report.summary?.revenue_amount || 0,
   };
+  const exportHeaders = ["Date", "Staff", "Company", "Customer", "Product", "Remarks", "Start time", "End time", "Duration"];
+  const exportRows = tasks.map((task) => [
+    task.work_date || "", task.resource_name || "Unassigned", task.company_name || "", task.customer_name || "",
+    (task.products || []).join(", "), task.progress_notes || "", time(task.start_time), time(task.end_time), duration(task.start_time, task.end_time),
+  ]);
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      await exportReport({ format, title: "Staff Daily Task Report", filename: "staff-daily-task-report", periodLabel: dateRange.fromDate === dateRange.toDate ? dateRange.fromDate : `${dateRange.fromDate} to ${dateRange.toDate}`, headers: exportHeaders, rows: exportRows });
+    } finally { setExporting(""); }
+  };
 
   return <section className="daily-task-report">
     <header className="daily-task-header">
@@ -85,6 +98,10 @@ export default function StaffDailyTaskReport() {
       <label><span>Staff member</span><select value={staff} onChange={(event) => setStaff(event.target.value)}><option value="">All staff</option>{(report.staff || []).map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
       <label className="daily-task-search"><span>Search</span><input value={search} placeholder="Staff, customer, company or notes" onChange={(event) => setSearch(event.target.value)} /></label>
       <button type="button" onClick={resetFilters}>Reset</button>
+      <div className="report-export-actions">
+        <button type="button" disabled={!tasks.length || Boolean(exporting)} onClick={() => handleExport("excel")}>{exporting === "excel" ? "Exporting..." : "Export Excel"}</button>
+        <button type="button" disabled={!tasks.length || Boolean(exporting)} onClick={() => handleExport("pdf")}>{exporting === "pdf" ? "Exporting..." : "Export PDF"}</button>
+      </div>
     </div>
 
     <div className="daily-task-summary">

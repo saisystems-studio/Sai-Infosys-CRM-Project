@@ -127,6 +127,11 @@ class InquiryProductDetails_tbl(models.Model):
         db_column="Payment_Status",
     )
 
+    Is_AMC = models.BooleanField(
+        default=False,
+        db_column="Is_AMC",
+    )
+
     Requirment = models.TextField(
         blank=True,
         null=True,
@@ -168,6 +173,12 @@ class PaymentDetail(models.Model):
         on_delete=models.CASCADE,
         related_name="payment_details",
         db_column="Inquiry_Product_Id",
+        null=True,
+        blank=True,
+    )
+    Product_Billing = models.ForeignKey(
+        "ProductBilling", on_delete=models.CASCADE, related_name="payment_details",
+        db_column="Product_Billing_Id", null=True, blank=True,
     )
     Amount = models.DecimalField(
         max_digits=12,
@@ -179,7 +190,7 @@ class PaymentDetail(models.Model):
         choices=PaymentType.choices,
         db_column="Payment_Type",
     )
-    Payment_Date = models.DateTimeField(auto_now_add=True, db_column="Payment_Date")
+    Payment_Date = models.DateTimeField(auto_now_add=True, null=True, db_column="Payment_Date")
     Created_By = models.ForeignKey(
         User,
         on_delete=models.PROTECT,
@@ -208,6 +219,13 @@ class PaymentDetail(models.Model):
 
     class Meta:
         db_table = "PaymentDetail_tbl"
+        constraints = [models.CheckConstraint(
+            condition=(
+                models.Q(Inquiry_Product__isnull=False, Product_Billing__isnull=True)
+                | models.Q(Inquiry_Product__isnull=True, Product_Billing__isnull=False)
+            ),
+            name="payment_detail_exactly_one_source",
+        )]
 
 
 class PaymentFollowUp(models.Model):
@@ -368,9 +386,39 @@ class ProductBilling(models.Model):
     SGST_Percentage = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True, db_column="SGST_Percentage"
     )
+    Total_Paid = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, db_column="Total_Paid"
+    )
+    Payment_Status = models.CharField(
+        max_length=20, default="Pending", db_column="Payment_Status"
+    )
     Created_By = models.ForeignKey(User, on_delete=models.PROTECT, db_column="Created_By")
     Created_On = models.DateTimeField(auto_now_add=True, db_column="Created_On")
 
     class Meta:
         db_table = "ProductBilling_tbl"
         ordering = ["-Created_On", "-Id"]
+
+
+class ProductBillingFollowUp(models.Model):
+    FollowUp_Id = models.AutoField(primary_key=True, db_column="FollowUp_Id")
+    Product_Billing = models.ForeignKey(
+        ProductBilling,
+        on_delete=models.CASCADE,
+        related_name="payment_follow_ups",
+        db_column="Product_Billing_Id",
+    )
+    FollowUp_Date = models.DateField(db_column="FollowUp_Date")
+    FollowUp_Type = models.CharField(
+        max_length=10,
+        choices=[("call", "Call"), ("email", "Email"), ("meeting", "Meeting")],
+        default="call",
+        db_column="FollowUp_Type",
+    )
+    Notes = models.TextField(blank=True, db_column="Notes")
+    Created_By = models.ForeignKey(User, on_delete=models.PROTECT, db_column="Created_By")
+    Created_On = models.DateTimeField(auto_now_add=True, db_column="Created_On")
+
+    class Meta:
+        db_table = "ProductBillingFollowUp_tbl"
+        ordering = ["-FollowUp_Date", "-FollowUp_Id"]

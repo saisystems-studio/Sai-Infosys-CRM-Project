@@ -98,8 +98,17 @@ export default function ProductBilling() {
         if (activeCustomerSearchRef.current === query) {
           setCustomerMatches(response.data.results || []);
         }
-      } catch {
-        if (activeCustomerSearchRef.current === query) setCustomerMatches([]);
+      } catch (requestError) {
+        if (activeCustomerSearchRef.current === query) {
+          setCustomerMatches([]);
+          const status = requestError.response?.status;
+          setError(
+            requestError.response?.data?.detail
+              || (status
+                ? `Customer search failed (HTTP ${status}).`
+                : "Customer search could not reach the backend server."),
+          );
+        }
       } finally {
         if (activeCustomerSearchRef.current === query) setIsSearchingCustomers(false);
       }
@@ -108,7 +117,7 @@ export default function ProductBilling() {
 
   const selectCustomer = async (customer) => {
     window.clearTimeout(customerSearchTimerRef.current);
-    activeCustomerSearchRef.current = customer.contact_number;
+    activeCustomerSearchRef.current = String(customer.customer_id);
     setCustomerSearch(`${customer.company_name || customer.customer_name} — ${customer.contact_number}`);
     setCustomerMatches([]);
     setShowCustomerMatches(false);
@@ -117,9 +126,9 @@ export default function ProductBilling() {
     try {
       const response = await axios.get(`${API}/product-billing/customer-lookup/`, {
         headers,
-        params: { contact_number: customer.contact_number },
+        params: { customer_id: customer.customer_id },
       });
-      setForm((current) => ({ ...current, contact_number: customer.contact_number, ...response.data }));
+      setForm((current) => ({ ...current, ...response.data }));
     } catch (e) {
       setError(e.response?.data?.detail || "Unable to load the selected customer.");
     }

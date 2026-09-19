@@ -5,8 +5,9 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from Customers.models import CustomerDetails
-from masters.models import LicenseTypeMaster, ProductTypeMaster
-from staff.models import StaffDetails
+from Inquiry.models import ProductBilling
+from masters.models import LicenseTypeMaster, MenuMaster, ProductTypeMaster
+from staff.models import StaffDetails, StaffMenuPermission
 
 
 class ProductBillingCustomerLookupTests(TestCase):
@@ -107,6 +108,31 @@ class ProductBillingCustomerLookupTests(TestCase):
                 "company_name": "Billing Company",
             }])
 
+    def test_lookup_searches_by_customer_name(self):
+        response = self.client.get(
+            "/api/product-billing/customer-lookup/",
+            {"query": "billing customer"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"][0]["customer_id"], self.customer.id)
+
+    def test_lookup_can_load_a_customer_without_a_contact(self):
+        customer = CustomerDetails.objects.create(
+            customer_code="BILL002",
+            customer_name="Contactless Customer",
+            created_by=get_user_model().objects.get(username="billing-admin"),
+        )
+
+        response = self.client.get(
+            "/api/product-billing/customer-lookup/",
+            {"customer_id": customer.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["customer_id"], customer.id)
+        self.assertEqual(response.json()["contact_number"], "")
+
     def test_saving_same_license_type_updates_the_existing_expiry_date(self):
         """Fails if a renewal with the same type leaves the stored expiry unchanged."""
         response = self.save_bill(
@@ -170,3 +196,171 @@ class ProductBillingCustomerLookupTests(TestCase):
             admin_id="new-admin@example.com",
             expiry_date=date(2028, 6, 30),
         ).exists())
+
+    def test_staff_with_product_billing_view_permission_can_open_the_page(self):
+        staff_user = get_user_model().objects.create_user(
+            username="billing-staff",
+            password="test-password",
+        )
+        staff = StaffDetails.objects.create(
+            Full_Name="Billing Staff",
+            Designation="Developer",
+            Email_Address="billing-staff@example.com",
+            Phone_Number="9876543211",
+            Hire_Date=date(2026, 1, 1),
+            Role="Developer",
+            User_Id=staff_user,
+            Created_By=self.customer.created_by,
+        )
+        menu = MenuMaster.objects.create(
+            Menu_Name="Product Billing",
+            Is_Active=True,
+        )
+        StaffMenuPermission.objects.create(
+            Staff=staff,
+            Menu=menu,
+            Can_View=True,
+            Can_Add=True,
+        )
+        self.client.force_authenticate(user=staff_user)
+
+        response = self.client.get("/api/product-billing/")
+
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/api/product-billing/customer-lookup/",
+            {"query": "billing customer"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"][0]["customer_id"], self.customer.id)
+
+    def test_saved_product_bill_appears_in_payment_pending(self):
+        bill = ProductBilling.objects.create(
+            Customer_Id=self.customer,
+            Contact_Number="9876543210",
+            Customer_Name=self.customer.customer_name,
+            Company_Name=self.customer.company_name,
+            Product_Id=self.product,
+            Rate="2500.00",
+            Quantity="1.00",
+            Amount="2500.00",
+            Created_By=get_user_model().objects.get(username="billing-admin"),
+        )
+
+        response = self.client.get("/api/inquiries/payment-pending/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(any(
+            row["source"] == "product_billing"
+            and row["id"] == f"billing-{bill.Id}"
+            and row["remaining_balance"] == "2500.00"
+            for row in response.json()
+        ))
+
+    def test_product_bill_payment_updates_its_pending_balance(self):
+        bill = ProductBilling.objects.create(
+            Customer_Id=self.customer, Contact_Number="9876543210",
+            Customer_Name=self.customer.customer_name, Company_Name=self.customer.company_name,
+            Product_Id=self.product, Rate="2500.00", Quantity="1.00", Amount="2500.00",
+            Created_By=get_user_model().objects.get(username="billing-admin"),
+        )
+
+        response = self.client.post(
+            f"/api/inquiries/payment-pending/billing-{bill.Id}/paid/",
+            {"amount": "1000.00", "payment_type": "installment"}, format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        bill.refresh_from_db()
+        self.assertEqual(str(bill.Total_Paid), "1000.00")
+        self.assertEqual(bill.Payment_Status, "Pending")
+
+        approvals = self.client.get("/api/inquiries/payment-approvals/")
+        self.assertEqual(approvals.status_code, 200)
+        self.assertEqual(len(approvals.json()), 1)
+        payment = approvals.json()[0]
+        self.assertEqual(payment["payment_amount"], "1000.00")
+        self.assertEqual(payment["remaining_balance"], "1500.00")
+        self.assertEqual(payment["company_name"], self.customer.company_name)
+        self.assertEqual(payment["product_name"], "TSS")
+        self.assertEqual(payment["approval_status"], "Pending")
+
+        staff = StaffDetails.objects.get(User_Id=bill.Created_By)
+        staff.Role = "Super Admin"
+        staff.save(update_fields=["Role"])
+        self.client.force_authenticate(user=get_user_model().objects.get(pk=bill.Created_By_id))
+        received = self.client.post(f"/api/inquiries/payment-approvals/{payment['id']}/received/")
+        self.assertEqual(received.status_code, 200)
+        report = self.client.get("/api/inquiries/payment-received-details/")
+        self.assertEqual(report.status_code, 200)
+        self.assertEqual(report.json()[0]["payment_amount"], "1000.00")
+        bill.refresh_from_db()
+        self.assertEqual(str(bill.Total_Paid), "1000.00")
+
+        final = self.client.post(
+            f"/api/inquiries/payment-pending/billing-{bill.Id}/paid/",
+            {"amount": "1500.00", "payment_type": "full"}, format="json",
+        )
+        self.assertEqual(final.status_code, 200)
+        bill.refresh_from_db()
+        self.assertEqual(bill.Payment_Status, "Pending")
+        approvals = self.client.get("/api/inquiries/payment-approvals/").json()
+        self.assertEqual(len(approvals), 2)
+        pending = next(row for row in approvals if row["approval_status"] == "Pending")
+        received = self.client.post(f"/api/inquiries/payment-approvals/{pending['id']}/received/")
+        self.assertEqual(received.status_code, 200)
+        bill.refresh_from_db()
+        self.assertEqual(bill.Payment_Status, "Received")
+        self.assertEqual(str(bill.Total_Paid), "2500.00")
+        duplicate = self.client.post(f"/api/inquiries/payment-approvals/{pending['id']}/received/")
+        self.assertEqual(duplicate.status_code, 400)
+
+    def test_recover_previous_product_bill_payment_without_changing_balance(self):
+        import importlib
+        from django.apps import apps
+        from django.db import connection
+        from types import SimpleNamespace
+
+        bill = ProductBilling.objects.create(
+            Customer_Id=self.customer, Contact_Number="9876543210",
+            Product_Id=self.product, Rate="4905.00", Quantity="1.00", Amount="4905.00",
+            Total_Paid="2000.00", Created_By=get_user_model().objects.get(username="billing-admin"),
+        )
+        migration = importlib.import_module("Inquiry.migrations.0021_recover_product_bill_payments")
+        editor = SimpleNamespace(connection=connection)
+        migration.recover_payments(apps, editor)
+        migration.recover_payments(apps, editor)
+        response = self.client.get("/api/inquiries/payment-approvals/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 1)
+        payment = response.json()[0]
+        self.assertEqual(payment["payment_amount"], "2000.00")
+        self.assertEqual(payment["remaining_balance"], "2905.00")
+        self.assertIsNone(payment["payment_date"])
+        self.assertEqual(payment["approval_status"], "Pending")
+        bill.refresh_from_db()
+        self.assertEqual(str(bill.Total_Paid), "2000.00")
+
+    def test_product_bill_can_save_and_list_payment_follow_ups(self):
+        bill = ProductBilling.objects.create(
+            Customer_Id=self.customer, Contact_Number="9876543210",
+            Customer_Name=self.customer.customer_name, Company_Name=self.customer.company_name,
+            Product_Id=self.product, Rate="2500.00", Quantity="1.00", Amount="2500.00",
+            Created_By=get_user_model().objects.get(username="billing-admin"),
+        )
+
+        response = self.client.post(
+            f"/api/inquiries/payment-pending/billing-{bill.Id}/follow-up/",
+            {"FollowUp_Date": "2026-10-01", "FollowUp_Type": "call", "Notes": "Call customer for payment."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["Notes"], "Call customer for payment.")
+        history = self.client.get(
+            f"/api/inquiries/payment-pending/billing-{bill.Id}/follow-up/",
+        )
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual(len(history.json()), 1)

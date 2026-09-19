@@ -41,6 +41,64 @@ export function getDefaultScheduleDateRange(now = new Date()) {
   };
 }
 
+export function getSchedulePeriodDateRange(preset, now = new Date()) {
+  const current = startOfDay(now);
+  if (!current || preset === "custom") return { fromDate: "", toDate: "" };
+
+  const from = new Date(current);
+  const to = new Date(current);
+
+  if (preset === "yesterday") {
+    from.setDate(from.getDate() - 1);
+    to.setDate(to.getDate() - 1);
+  } else if (preset === "today-yesterday") {
+    from.setDate(from.getDate() - 1);
+  } else if (preset === "last-7-days") {
+    from.setDate(from.getDate() - 6);
+  } else if (preset === "next-month") {
+    from.setMonth(from.getMonth() + 1, 1);
+    to.setMonth(to.getMonth() + 2, 0);
+  } else if (preset === "this-month") {
+    from.setDate(1);
+    to.setMonth(to.getMonth() + 1, 0);
+  } else if (preset === "last-month") {
+    from.setMonth(from.getMonth() - 1, 1);
+    to.setMonth(to.getMonth(), 0);
+  }
+
+  return { fromDate: getTodayDateString(from), toDate: getTodayDateString(to) };
+}
+
+export function getScheduleFilterOptions({
+  resources = [],
+  statuses = [],
+  products = [],
+  inquiries = [],
+} = {}) {
+  const unique = (values) => [...new Set(values.filter(Boolean))].sort((left, right) => String(left).localeCompare(String(right)));
+  const scheduledStaff = inquiries.map((inquiry) => ({
+    value: String(inquiry.Resource_Id || ""),
+    label: inquiry.resource_name,
+  })).filter((option) => option.value && option.label);
+  const staff = resources.length
+    ? resources.map((resource) => ({ value: String(resource.Id), label: resource.Full_Name })).filter((option) => option.value && option.label)
+    : scheduledStaff;
+  const scheduledStatuses = inquiries.map((inquiry) => inquiry.status_name);
+  const scheduledProducts = inquiries.flatMap((inquiry) =>
+    Array.isArray(inquiry.products)
+      ? inquiry.products.map((product) => product.product_name || product.product_type_name || product.name)
+      : [],
+  );
+
+  return {
+    staff: staff
+      .filter((option, index, list) => list.findIndex((item) => item.value === option.value) === index)
+      .sort((left, right) => left.label.localeCompare(right.label)),
+    statuses: unique(statuses.length ? statuses.map((status) => status.status_type_name) : scheduledStatuses),
+    products: unique(products.length ? products.map((product) => product.product_type_name) : scheduledProducts),
+  };
+}
+
 export function getScheduleDateState(value, now = new Date()) {
   if (!value) return "unscheduled";
   const scheduled = startOfDay(value);

@@ -168,7 +168,8 @@
   font-size: 12px;
 }
 
-.payment-pending-amount-column {
+.payment-approval-table th.payment-pending-amount-column,
+.payment-approval-table td.payment-pending-amount-column {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

@@ -16,6 +16,7 @@ from .serializers import (
     PaymentApprovalEntrySerializer,
     PaymentPendingListSerializer,
     PaymentRecordSerializer,
+    PaymentAmountUpdateSerializer,
     InquiryTaskDetailSerializer,
     InquiryTaskProgressSerializer,
     InvoiceAmountSerializer,
@@ -35,7 +36,7 @@ from .task_progress import (
     save_invoice_amount,
     start_inquiry_task,
 )
-from .payment_ledger import approve_payment_detail, record_payment
+from .payment_ledger import approve_payment_detail, record_payment, update_pending_payment_total
 from staff.access import HasMenuPermission, get_staff, has_full_access, menu_permission, normalize_role
 from staff.models import StaffDetails
 from .models import InquiryProductDetails_tbl, PaymentDetail, PaymentFollowUp, ProductBilling
@@ -153,6 +154,10 @@ class InquiryViewSet(
                 latest_payment_date=Subquery(
                     latest_payment.values("Payment_Date")[:1],
                     output_field=DateTimeField(),
+                ),
+                latest_payment_approval_status=Subquery(
+                    latest_payment.values("Approval_Status")[:1],
+                    output_field=CharField(),
                 ),
             )
         )
@@ -374,7 +379,7 @@ class InquiryViewSet(
             "-Created_On", "-Id"
         ):
             billed_total = (bill.Amount or 0) + (bill.GST or 0)
-            remaining_balance = billed_total - (bill.Total_Paid or Decimal("0.00"))
+            remaining_balance = bill.collection_amount - (bill.Total_Paid or Decimal("0.00"))
             if remaining_balance <= 0:
                 continue
             billing_rows.append({
@@ -386,7 +391,7 @@ class InquiryViewSet(
                 "product_name": bill.Product_Id.product_type_name or "Product",
                 "requirement": "",
                 "amount": f"{billed_total:.2f}",
-                "revenue_amount": f"{billed_total:.2f}",
+                "revenue_amount": f"{bill.collection_amount:.2f}",
                 "total_paid": f"{bill.Total_Paid:.2f}",
                 "remaining_balance": f"{remaining_balance:.2f}",
                 "latest_payment_type": None,
@@ -421,7 +426,7 @@ class InquiryViewSet(
                     bill = ProductBilling.objects.select_for_update().get(pk=billing_id)
                     amount = serializer.validated_data["amount"]
                     payment_type = serializer.validated_data["payment_type"]
-                    billed_total = (bill.Amount or Decimal("0.00")) + (bill.GST or Decimal("0.00"))
+                    billed_total = bill.collection_amount
                     total_paid = bill.Total_Paid or Decimal("0.00")
                     remaining_balance = billed_total - total_paid
                     if amount > remaining_balance:
@@ -450,6 +455,65 @@ class InquiryViewSet(
             user=request.user,
             amount=serializer.validated_data["amount"],
             payment_type=serializer.validated_data["payment_type"],
+        )
+        return Response({
+            "id": product.id,
+            "total_paid": f"{total_paid:.2f}",
+            "remaining_balance": f"{remaining_balance:.2f}",
+            "payment_status": product.Payment_Status,
+        })
+
+    @action(detail=False, methods=["post"], url_path=r"payment-pending/(?P<product_id>[^/.]+)/paid-amount")
+    def update_paid_amount(self, request, product_id=None):
+        """Edit the latest payment that is still pending approval."""
+        self._require_admin(request)
+        serializer = PaymentAmountUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if str(product_id).startswith("billing-"):
+            try:
+                billing_id = int(str(product_id).removeprefix("billing-"))
+                with transaction.atomic():
+                    bill = ProductBilling.objects.select_for_update().get(pk=billing_id)
+                    latest_payment = bill.payment_details.select_for_update().order_by(
+                        "-Payment_Date", "-Id"
+                    ).first()
+                    if latest_payment is None:
+                        raise ValidationError({"detail": "Record a payment before editing the paid amount."})
+                    other_payments = bill.payment_details.exclude(pk=latest_payment.pk).aggregate(
+                        total=Sum("Amount")
+                    )["total"] or Decimal("0.00")
+                    total_paid = serializer.validated_data["total_paid"]
+                    updated_amount = total_paid - other_payments
+                    if updated_amount <= Decimal("0.00"):
+                        raise ValidationError({"total_paid": "Paid amount must be greater than the other recorded payments."})
+                    if total_paid > bill.collection_amount:
+                        raise ValidationError({"total_paid": "Paid amount cannot exceed the revenue amount."})
+                    latest_payment.Amount = updated_amount
+                    latest_payment.Payment_Type = (
+                        PaymentDetail.PaymentType.FULL
+                        if total_paid == bill.collection_amount
+                        else PaymentDetail.PaymentType.INSTALLMENT
+                    )
+                    latest_payment.Approval_Status = PaymentDetail.PaymentApprovalStatus.PENDING
+                    latest_payment.Approved_By = None
+                    latest_payment.Approved_On = None
+                    latest_payment.save(update_fields=[
+                        "Amount", "Payment_Type", "Approval_Status", "Approved_By", "Approved_On",
+                    ])
+                    bill.Total_Paid = total_paid
+                    bill.Payment_Status = "Pending"
+                    bill.save(update_fields=["Total_Paid", "Payment_Status"])
+            except (TypeError, ValueError, ProductBilling.DoesNotExist):
+                raise ValidationError("Product bill payment record not found.")
+            return Response({
+                "id": f"billing-{bill.Id}",
+                "total_paid": f"{bill.Total_Paid:.2f}",
+                "remaining_balance": f"{bill.collection_amount - bill.Total_Paid:.2f}",
+                "payment_status": bill.Payment_Status,
+            })
+        product, total_paid, remaining_balance = update_pending_payment_total(
+            product_id=product_id,
+            total_paid=serializer.validated_data["total_paid"],
         )
         return Response({
             "id": product.id,

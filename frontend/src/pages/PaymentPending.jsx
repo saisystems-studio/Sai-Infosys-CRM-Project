@@ -78,6 +78,7 @@ export default function PaymentPending() {
   const [followUpNotes, setFollowUpNotes] = useState("");
   const [followUpSaving, setFollowUpSaving] = useState(false);
   const [amount, setAmount] = useState("");
+  const [paymentModalMode, setPaymentModalMode] = useState("record");
   const [paymentType, setPaymentType] = useState("full");
   const [saving, setSaving] = useState(false);
   const [productFilter, setProductFilter] = useState("all");
@@ -174,8 +175,16 @@ export default function PaymentPending() {
 
   const openPaymentModal = (payment) => {
     setSelectedPayment(payment);
+    setPaymentModalMode("record");
     setPaymentType("full");
     setAmount(payment.remaining_balance);
+    setError("");
+  };
+
+  const openPaidAmountEditor = (payment) => {
+    setSelectedPayment(payment);
+    setPaymentModalMode("edit");
+    setAmount(payment.total_paid);
     setError("");
   };
 
@@ -328,19 +337,21 @@ export default function PaymentPending() {
     try {
       setSaving(true);
       setError("");
+      const isEdit = paymentModalMode === "edit";
       const response = await authorizedPaymentFetch(
-        `${API_BASE}/inquiries/payment-pending/${selectedPayment.id}/paid/`,
+        `${API_BASE}/inquiries/payment-pending/${selectedPayment.id}/${isEdit ? "paid-amount" : "paid"}/`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount, payment_type: paymentType }),
+          body: JSON.stringify(isEdit ? { total_paid: amount } : { amount, payment_type: paymentType }),
         },
         { apiUrl: API_BASE },
       );
       const data = await response.json();
       if (!response.ok) {
         throw new Error(
-          data.amount?.[0] ||
+          data.total_paid?.[0] ||
+            data.amount?.[0] ||
             data.payment_type?.[0] ||
             data.detail ||
             "Unable to record payment.",
@@ -490,7 +501,20 @@ export default function PaymentPending() {
                       {formatAmount(payment.revenue_amount)}
                     </td>
                     <td className="payment-pending-amount-column">
-                      {formatAmount(payment.total_paid)}
+                      <span className="payment-pending-paid-value">
+                        {formatAmount(payment.total_paid)}
+                        {canRecord && Number(payment.total_paid) > 0 && (
+                          <button
+                            type="button"
+                            className="payment-paid-edit-btn"
+                            onClick={() => openPaidAmountEditor(payment)}
+                            aria-label={`Edit paid amount for ${payment.customer_name || "payment"}`}
+                            title="Edit paid amount"
+                          >
+                            <FiEdit3 aria-hidden="true" />
+                          </button>
+                        )}
+                      </span>
                     </td>
                     <td className="payment-pending-balance payment-pending-amount-column">
                       {formatAmount(payment.remaining_balance)}
@@ -887,7 +911,9 @@ export default function PaymentPending() {
           >
             <div className="payment-pending-modal-header">
               <div>
-                <span className="payment-approval-kicker">Record payment</span>
+                <span className="payment-approval-kicker">
+                  {paymentModalMode === "edit" ? "Edit paid amount" : "Record payment"}
+                </span>
                 <h2>{selectedPayment.customer_name || "Customer"}</h2>
               </div>
               <button
@@ -900,12 +926,12 @@ export default function PaymentPending() {
               </button>
             </div>
             <p className="payment-pending-remaining">
-              Remaining balance:{" "}
+              {paymentModalMode === "edit" ? "Current remaining balance: " : "Remaining balance: "}
               <strong>{formatAmount(selectedPayment.remaining_balance)}</strong>
             </p>
             {error && <div className="payment-approval-error">{error}</div>}
             <label className="payment-pending-field">
-              Payment amount
+              {paymentModalMode === "edit" ? "Total paid amount" : "Payment amount"}
               <input
                 type="number"
                 min="0.01"
@@ -915,7 +941,7 @@ export default function PaymentPending() {
                 required
               />
             </label>
-            <fieldset className="payment-pending-types">
+            {paymentModalMode === "record" && <fieldset className="payment-pending-types">
               <legend>Payment type</legend>
               <label>
                 <input
@@ -938,7 +964,7 @@ export default function PaymentPending() {
                 />
                 Installment
               </label>
-            </fieldset>
+            </fieldset>}
             <div className="payment-pending-modal-actions">
               <button
                 type="button"
@@ -953,7 +979,7 @@ export default function PaymentPending() {
                 className="payment-received-btn"
                 disabled={saving}
               >
-                {saving ? "Saving..." : "Confirm Paid"}
+                {saving ? "Saving..." : paymentModalMode === "edit" ? "Save amount" : "Confirm Paid"}
               </button>
             </div>
           </form>

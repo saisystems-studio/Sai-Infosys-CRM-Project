@@ -22,6 +22,7 @@ const newProductLine = () => ({
   product_id: "",
   rate: "",
   quantity: "1",
+  revenue_amount: "",
   has_gst: false,
 });
 
@@ -228,7 +229,7 @@ export default function ProductBilling() {
           <h2>Product details</h2>
           <div className="product-list" aria-label="Product list">
             <div className="product-list-head" aria-hidden="true">
-              <span>Product</span><span>Rate</span><span>Quantity</span><span>Amount</span><span />
+              <span>Product</span><span>Rate</span><span>Quantity</span><span>Amount</span><span>Revenue Amount</span><span />
             </div>
             {productLines.map((line, index) => {
               const totals = productTotals[index];
@@ -237,6 +238,7 @@ export default function ProductBilling() {
                 <Field label="Rate" type="number" value={line.rate} onChange={(e) => updateProductLine(index, "rate", e.target.value)} />
                 <Field label="Quantity" type="number" value={line.quantity} onChange={(e) => updateProductLine(index, "quantity", e.target.value)} />
                 <Field label="Amount" type="number" value={totals.amount.toFixed(2)} readOnly />
+                <Field label="Revenue Amount" type="number" max="9999999999.99" value={line.revenue_amount} onChange={(e) => updateProductLine(index, "revenue_amount", e.target.value)} />
                 <button type="button" className="btn-remove-product" onClick={() => removeProductLine(index)} disabled={productLines.length === 1} aria-label={`Remove product ${index + 1}`}>×</button>
                 <div className="product-tax-info">
                   <label className="gst-applicable"><input type="checkbox" checked={line.has_gst} onChange={(e) => updateProductLine(index, "has_gst", e.target.checked)} /><span>GST applicable</span></label>

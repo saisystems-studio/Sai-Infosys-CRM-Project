@@ -250,6 +250,48 @@ class PaymentApprovalAccessTests(TestCase):
         self.assertEqual(response.data["remaining_balance"], "6.00")
         self.assertEqual(response.data["payment_status"], "Pending")
 
+    def test_admin_can_edit_the_latest_unapproved_paid_amount(self):
+        """The grid edit updates an unapproved ledger entry and its balance."""
+        PaymentDetail.objects.create(
+            Inquiry_Product=self.pending_payment,
+            Amount=Decimal("4.00"),
+            Payment_Type=PaymentDetail.PaymentType.INSTALLMENT,
+            Created_By=self.admin_user,
+        )
+
+        response = self.client.post(
+            f"/api/inquiries/payment-pending/{self.pending_payment.id}/paid-amount/",
+            {"total_paid": "6.00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["total_paid"], "6.00")
+        self.assertEqual(response.data["remaining_balance"], "4.00")
+        self.assertEqual(
+            self.pending_payment.payment_details.get().Amount, Decimal("6.00")
+        )
+
+    def test_paid_amount_edit_reopens_an_approved_payment_for_approval(self):
+        detail = PaymentDetail.objects.create(
+            Inquiry_Product=self.pending_payment,
+            Amount=Decimal("4.00"),
+            Payment_Type=PaymentDetail.PaymentType.INSTALLMENT,
+            Created_By=self.admin_user,
+            Approval_Status=PaymentDetail.PaymentApprovalStatus.RECEIVED,
+        )
+
+        response = self.client.post(
+            f"/api/inquiries/payment-pending/{self.pending_payment.id}/paid-amount/",
+            {"total_paid": "6.00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        detail.refresh_from_db()
+        self.assertEqual(detail.Amount, Decimal("6.00"))
+        self.assertEqual(detail.Approval_Status, "Pending")
+
     def test_full_payment_stays_pending_until_super_admin_approves_it(self):
         """Fails if Admin payment entry marks a payment as Received."""
         response = self.client.post(

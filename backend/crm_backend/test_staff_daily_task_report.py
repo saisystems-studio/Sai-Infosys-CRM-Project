@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from Customers.models import CustomerDetails
-from Inquiry.models import InquiryDetails_tbl, InquiryProductDetails_tbl, InquiryTaskProgress, TaskStatus
+from Inquiry.models import InquiryDetails_tbl, InquiryProductDetails_tbl, InquiryTaskProgress, ProductBilling, TaskStatus
 from masters.models import ProductTypeMaster, StatusTypeMaster
 from staff.models import StaffDetails
 
@@ -90,3 +90,25 @@ class StaffDailyTaskReportTests(TestCase):
         response = self.client.get("/api/staff-daily-task-report/?date=2026-09-10")
 
         self.assertEqual(response.status_code, 403)
+
+    def test_staff_bill_appears_with_creator_date_and_revenue(self):
+        bill = ProductBilling.objects.create(
+            Customer_Id=self.customer, Product_Id=ProductTypeMaster.objects.first(),
+            Rate=2000, Quantity=1, Amount=2000, Revenue_Amount=500,
+            Created_By=self.staff_user,
+        )
+        ProductBilling.objects.filter(pk=bill.pk).update(Created_On=timezone.make_aware(datetime(2026, 9, 10, 12)))
+        self.client.force_authenticate(self.super_user)
+        response = self.client.get('/api/staff-daily-task-report/', {'date': '2026-09-10', 'staff': self.staff.pk})
+        self.assertEqual(response.status_code, 200)
+        row = next((row for row in response.data['tasks'] if row.get('record_type') == 'Product Billing'), None)
+        self.assertIsNotNone(row)
+        self.assertEqual(row['resource_id'], self.staff.pk)
+        self.assertEqual(row['resource_name'], self.staff.Full_Name)
+        self.assertIsNone(row['start_time'])
+        self.assertEqual(response.data['summary']['total_amount'], 3000)
+        self.assertEqual(response.data['summary']['revenue_amount'], 500)
+        self.assertEqual(response.data['summary']['active'], 0)
+        for filters in ({'date': '2026-09-11'}, {'date': '2026-09-10', 'staff': self.super_staff.pk}):
+            result = self.client.get('/api/staff-daily-task-report/', filters)
+            self.assertFalse(any(row.get('record_type') == 'Product Billing' for row in result.data['tasks']))

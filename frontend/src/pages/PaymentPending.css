@@ -168,9 +168,31 @@
   font-size: 12px;
 }
 
-.payment-pending-amount-column {
+.payment-approval-table th.payment-pending-amount-column,
+.payment-approval-table td.payment-pending-amount-column {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.payment-pending-paid-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.payment-paid-edit-btn {
+  display: inline-flex;
+  border: 0;
+  border-radius: 5px;
+  padding: 3px;
+  color: #315fcb;
+  background: #e7efff;
+  cursor: pointer;
+}
+
+.payment-paid-edit-btn:hover {
+  background: #d4e2ff;
 }
 
 .payment-pending-actions {

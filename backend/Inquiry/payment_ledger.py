@@ -51,6 +51,47 @@ def record_payment(*, product_id, user, amount, payment_type):
 
 
 @transaction.atomic
+def update_pending_payment_total(*, product_id, total_paid):
+    """Edit the latest unapproved ledger entry without changing approvals."""
+    try:
+        product = InquiryProductDetails_tbl.objects.select_for_update().get(
+            pk=product_id, Revenue_Amount__gt=0, Payment_Status="Pending"
+        )
+    except InquiryProductDetails_tbl.DoesNotExist as error:
+        raise Http404("Outstanding payment record not found.") from error
+
+    latest_pending = product.payment_details.select_for_update().order_by(
+        "-Payment_Date", "-Id"
+    ).first()
+    if latest_pending is None:
+        raise ValidationError({"detail": "Record a payment before editing the paid amount."})
+
+    other_payments = product.payment_details.exclude(pk=latest_pending.pk).aggregate(
+        total=Sum("Amount")
+    )["total"] or Decimal("0.00")
+    updated_amount = total_paid - other_payments
+    if updated_amount <= Decimal("0.00"):
+        raise ValidationError({"total_paid": "Paid amount must be greater than the other recorded payments."})
+    if total_paid > product.Revenue_Amount:
+        raise ValidationError({"total_paid": "Paid amount cannot exceed the revenue amount."})
+
+    latest_pending.Amount = updated_amount
+    latest_pending.Payment_Type = (
+        PaymentDetail.PaymentType.FULL
+        if total_paid == product.Revenue_Amount
+        else PaymentDetail.PaymentType.INSTALLMENT
+    )
+    # Changing an approved amount requires it to be approved again.
+    latest_pending.Approval_Status = PaymentDetail.PaymentApprovalStatus.PENDING
+    latest_pending.Approved_By = None
+    latest_pending.Approved_On = None
+    latest_pending.save(update_fields=[
+        "Amount", "Payment_Type", "Approval_Status", "Approved_By", "Approved_On",
+    ])
+    return product, total_paid, product.Revenue_Amount - total_paid
+
+
+@transaction.atomic
 def refresh_product_payment_status(product):
     product = InquiryProductDetails_tbl.objects.select_for_update().get(pk=product.pk)
     total_paid = product.payment_details.aggregate(total=Sum("Amount"))["total"] or Decimal("0.00")
@@ -112,7 +153,7 @@ def approve_payment_detail(*, payment_detail_id, user):
     detail.save(update_fields=["Approval_Status", "Approved_By", "Approved_On"])
     if detail.Product_Billing_id:
         bill = ProductBilling.objects.select_for_update().get(pk=detail.Product_Billing_id)
-        billed_total = bill.Amount + bill.GST
+        billed_total = bill.collection_amount
         has_pending = bill.payment_details.filter(
             Approval_Status=PaymentDetail.PaymentApprovalStatus.PENDING,
         ).exists()

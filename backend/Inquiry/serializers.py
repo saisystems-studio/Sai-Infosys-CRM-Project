@@ -107,6 +107,7 @@ class PaymentApprovalSerializer(serializers.ModelSerializer):
     remaining_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     latest_payment_type = serializers.CharField(read_only=True, allow_null=True)
     latest_payment_date = serializers.DateTimeField(read_only=True, allow_null=True)
+    latest_payment_approval_status = serializers.CharField(read_only=True, allow_null=True)
     created_on = serializers.DateTimeField(source="Created_On", read_only=True, allow_null=True)
 
     class Meta:
@@ -125,6 +126,7 @@ class PaymentApprovalSerializer(serializers.ModelSerializer):
             "remaining_balance",
             "latest_payment_type",
             "latest_payment_date",
+            "latest_payment_approval_status",
             "payment_status",
             "created_on",
         ]
@@ -154,13 +156,13 @@ class PaymentApprovalEntrySerializer(serializers.ModelSerializer):
             "product_name": bill.Product_Id.product_type_name or "Product",
             "requirement": "",
             "invoice_amount": f"{total:.2f}",
-            "revenue_amount": f"{total:.2f}",
+            "revenue_amount": f"{bill.collection_amount:.2f}",
             "payment_amount": f"{instance.Amount:.2f}",
             "payment_type": instance.Payment_Type,
             "payment_date": self.fields["payment_date"].to_representation(instance.Payment_Date) if instance.Payment_Date else None,
             "payment_status": bill.Payment_Status,
             "total_paid": f"{bill.Total_Paid:.2f}",
-            "remaining_balance": f"{total - bill.Total_Paid:.2f}",
+            "remaining_balance": f"{bill.collection_amount - bill.Total_Paid:.2f}",
             "is_latest_payment": instance.Id == bill.payment_details.order_by("-Id").values_list("Id", flat=True).first(),
             "approval_status": instance.Approval_Status,
             "approved_by": instance.Approved_By.username if instance.Approved_By_id else None,
@@ -226,6 +228,14 @@ class PaymentRecordSerializer(serializers.Serializer):
         min_value=Decimal("0.01"),
     )
     payment_type = serializers.ChoiceField(choices=("full", "installment"))
+
+
+class PaymentAmountUpdateSerializer(serializers.Serializer):
+    total_paid = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
 
 
 class PaymentFollowUpSerializer(serializers.ModelSerializer):

@@ -660,7 +660,7 @@ footer button:disabled {
 .product-list-head,
 .product-line {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 30px;
+    grid-template-columns: minmax(130px, 2fr) repeat(4, minmax(65px, 1fr)) 30px;
     gap: 12px;
     align-items: end;
 }

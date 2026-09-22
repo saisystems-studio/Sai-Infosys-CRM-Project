@@ -255,6 +255,9 @@ function Dashboard() {
   const [menuAccess, setMenuAccess] = useState({});
 
   // Dashboard data states
+  const [overdueStaffId, setOverdueStaffId] = useState("");
+  const [dashboardStaff, setDashboardStaff] = useState([]);
+  const [staffFilterError, setStaffFilterError] = useState("");
   const [stats, setStats] = useState({
     totalCustomers: 0,
     totalInquiries: 0,
@@ -270,6 +273,18 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const dashboardRole = normalizeRole(user?.role || user?.user_type);
   const isSuperAdmin = dashboardRole === "super admin";
+  const overdueInquiries = stats.overdueInProgressInquiries || [];
+  const filteredOverdueInquiries = overdueInquiries.filter(
+    (inquiry) => !overdueStaffId || String(inquiry.Resource_Id) === overdueStaffId,
+  );
+  const overdueStaffOptions = new Map(
+    dashboardStaff.map((staff) => [String(staff.Id), staff.Full_Name]),
+  );
+  overdueInquiries.forEach((inquiry) => {
+    if (inquiry.Resource_Id != null && !overdueStaffOptions.has(String(inquiry.Resource_Id))) {
+      overdueStaffOptions.set(String(inquiry.Resource_Id), inquiry.resource_name || "Unknown staff");
+    }
+  });
 
   // List of all page/menu names where FAB should NOT appear
   const nonDashboardPages = [
@@ -642,6 +657,14 @@ function Dashboard() {
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           setStats(statsData);
+        }
+        try {
+          const staffResponse = await fetch("/crm/api/inquiries/resources/", { headers });
+          if (!staffResponse.ok) throw new Error("Unable to load staff list");
+          setDashboardStaff(await staffResponse.json());
+          setStaffFilterError("");
+        } catch {
+          setStaffFilterError("Staff list unavailable. Showing staff from overdue inquiries.");
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -1241,13 +1264,32 @@ function Dashboard() {
                     <h2>In-progress inquiries over 2 days</h2>
                     <p>Inquiries still marked In Progress two days after creation.</p>
                   </div>
-                  <span className="dashboard-priority-count">
-                    {stats.overdueInProgressInquiries?.length || 0} overdue
-                  </span>
+                  <div className="dashboard-priority-controls">
+                    <div className="dashboard-staff-filter">
+                      <label htmlFor="overdue-staff-filter">Staff</label>
+                      <select
+                        id="overdue-staff-filter"
+                        value={overdueStaffId}
+                        onChange={(event) => setOverdueStaffId(event.target.value)}
+                        aria-describedby={staffFilterError ? "overdue-staff-error" : undefined}
+                      >
+                        <option value="">All staff</option>
+                        {[...overdueStaffOptions.entries()]
+                          .sort((a, b) => a[1].localeCompare(b[1]))
+                          .map(([id, name]) => (
+                            <option key={id} value={id}>{name}</option>
+                          ))}
+                      </select>
+                      {staffFilterError && <small id="overdue-staff-error" role="status">{staffFilterError}</small>}
+                    </div>
+                    <span className="dashboard-priority-count" aria-live="polite">
+                      {filteredOverdueInquiries.length} overdue
+                    </span>
+                  </div>
                 </div>
-                {stats.overdueInProgressInquiries?.length ? (
+                {filteredOverdueInquiries.length ? (
                   <div className="dashboard-priority-list">
-                    {stats.overdueInProgressInquiries.map((inquiry) => (
+                    {filteredOverdueInquiries.map((inquiry) => (
                       <button
                         type="button"
                         className="dashboard-priority-row"
@@ -1282,7 +1324,10 @@ function Dashboard() {
                   </div>
                 ) : (
                   <div className="dashboard-priority-empty">
-                    <Icon name="check" size={16} /> No in-progress inquiries have exceeded two days.
+                    <Icon name="check" size={16} />
+                    {overdueStaffId
+                      ? "No overdue in-progress inquiries for the selected staff member."
+                      : "No in-progress inquiries have exceeded two days."}
                   </div>
                 )}
               </section>

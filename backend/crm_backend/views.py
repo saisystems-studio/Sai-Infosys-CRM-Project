@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Prefetch, Q, Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -18,6 +18,18 @@ from Inquiry.models import InquiryTaskProgress
 from Inquiry.serializers import InquiryListSerializer
 from staff.models import StaffDetails, StaffMenuPermission
 from masters.models import LicenseTypeMaster, ProductTypeMaster
+
+
+def _bill_report_fields(bill, staff_by_user):
+    creator = staff_by_user.get(bill.Created_By_id)
+    created = timezone.localtime(bill.Created_On) if timezone.is_aware(bill.Created_On) else bill.Created_On
+    return {
+        "record_type": "Product Billing",
+        "customer_id": bill.Customer_Id_id,
+        "resource_id": creator.pk if creator else None,
+        "resource_name": creator.Full_Name if creator else bill.Created_By.get_full_name() or bill.Created_By.username,
+        "billing_date": created.date().isoformat(),
+    }
 
 
 @api_view(["POST"])
@@ -330,13 +342,18 @@ def customer_business_summary(request):
     ]
 
     bill_rows = []
-    for bill in ProductBilling.objects.select_related("Product_Id").prefetch_related("payment_details"):
+    staff_by_user = {member.User_Id_id: member for member in StaffDetails.objects.all()}
+    for bill in ProductBilling.objects.select_related("Product_Id", "Created_By").prefetch_related("payment_details"):
+        identity = _bill_report_fields(bill, staff_by_user)
         total = bill.Amount + bill.GST
         bill_rows.append({
             "id": f"b-{bill.pk}",
             "billId": bill.pk,
             "customerId": str(bill.Customer_Id_id),
-            "date": bill.Created_On.date().isoformat(),
+            "date": identity["billing_date"],
+            "resource": identity["resource_name"],
+            "recordType": "Product Billing",
+            "revenueAmount": float(bill.Revenue_Amount or 0),
             "product": bill.Product_Id.product_type_name,
             "serialNumber": bill.License_Details or "",
             "quantity": float(bill.Quantity),
@@ -353,11 +370,11 @@ def customer_business_summary(request):
                 "billingId": f"b-{bill.pk}",
                 "customerId": str(bill.Customer_Id_id),
                 "product": bill.Product_Id.product_type_name,
-                "resource": "",
+                "resource": identity["resource_name"],
                 "category": "Product Sales",
                 "date": payment.Payment_Date.date().isoformat() if payment.Payment_Date else "",
                 "amount": float(payment.Amount or 0),
-                "remarks": "",
+                "remarks": "Product Billing payment",
             })
 
     return Response({
@@ -464,6 +481,35 @@ def staff_daily_task_report(request):
         for inquiry in unique_inquiries
         for product in inquiry.inquiryproductdetails_tbl_set.all()
     )
+
+    staff_by_user = {member.User_Id_id: member for member in StaffDetails.objects.all()}
+    bills = ProductBilling.objects.filter(Created_On__date__range=(from_date, to_date)).select_related(
+        "Created_By", "Customer_Id", "Product_Id"
+    )
+    for bill in bills:
+        identity = _bill_report_fields(bill, staff_by_user)
+        if resource_id and str(identity["resource_id"]) != resource_id:
+            continue
+        customer_name = bill.Customer_Name or bill.Customer_Id.customer_name
+        company_name = bill.Company_Name or bill.Customer_Id.company_name
+        if search and search.lower() not in " ".join([
+            identity["resource_name"], customer_name or "", company_name or "",
+            bill.Product_Id.product_type_name or "", "Product Billing",
+        ]).lower():
+            continue
+        task_rows.append({
+            **identity, "id": f"billing-{bill.pk}", "inquiry_id": None,
+            "work_date": identity["billing_date"],
+            "customer_name": customer_name, "company_name": company_name,
+            "products": [bill.Product_Id.product_type_name],
+            "start_time": None, "end_time": None,
+            "progress_notes": "Product Billing", "task_status_label": "Product Billing",
+            "amount": bill.Amount, "revenue_amount": bill.Revenue_Amount or 0,
+        })
+        completed += 1
+        total_amount += bill.Amount
+        revenue_amount += bill.Revenue_Amount or 0
+    task_rows.sort(key=lambda row: (row["resource_name"].lower(), row["work_date"], str(row["id"])))
 
     return Response({
         "date": report_date.isoformat(),
@@ -574,13 +620,16 @@ def product_billing(request):
     if denied:
         return denied
     if request.method == "GET":
+        staff_by_user = {member.User_Id_id: member for member in StaffDetails.objects.all()}
         return Response([{
+            **_bill_report_fields(bill, staff_by_user),
             "id": bill.Id, "customer_name": bill.Customer_Name, "company_name": bill.Company_Name,
             "contact_number": bill.Contact_Number, "license_details": bill.License_Details,
             "product": bill.Product_Id.product_type_name, "rate": bill.Rate, "quantity": bill.Quantity,
+            "revenue_amount": bill.Revenue_Amount,
             "amount": bill.Amount, "is_external_renewal": bill.Is_External_Renewal, "has_gst": bill.Has_GST, "gst": bill.GST, "gst_percentage": bill.GST_Percentage, "hsn_code": bill.HSN_Code, "cgst": bill.CGST, "cgst_percentage": bill.CGST_Percentage,
             "sgst": bill.SGST, "sgst_percentage": bill.SGST_Percentage,
-        } for bill in ProductBilling.objects.select_related("Product_Id")])
+        } for bill in ProductBilling.objects.select_related("Product_Id", "Created_By")])
     data = request.data
     try:
         customer = CustomerDetails.objects.get(pk=data.get("customer_id"))
@@ -592,6 +641,16 @@ def product_billing(request):
         for item in items:
             product = ProductTypeMaster.objects.get(pk=item.get("product_id"))
             rate, quantity, amount = (Decimal(str(item.get(key, ""))) for key in ("rate", "quantity", "amount"))
+            try:
+                revenue = serializers.DecimalField(
+                    max_digits=12, decimal_places=2, min_value=Decimal("0"),
+                    allow_null=True,
+                ).run_validation(item.get("revenue_amount"))
+            except serializers.ValidationError:
+                return Response(
+                    {"detail": "Enter a valid revenue amount between 0 and 9,999,999,999.99 with at most two decimal places."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             is_external_renewal = bool(item.get("is_external_renewal", data.get("is_external_renewal")))
             has_gst = bool(item.get("has_gst"))
             if is_external_renewal and "tss" not in (product.product_type_name or "").lower():
@@ -600,7 +659,7 @@ def product_billing(request):
                 raise ValueError
             gst_percentage = (product.gst_percentage or Decimal("0")) if has_gst else Decimal("0")
             gst = (amount * gst_percentage / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            bill_items.append((product, rate, quantity, amount, is_external_renewal, has_gst, gst_percentage, gst))
+            bill_items.append((product, rate, quantity, amount, is_external_renewal, has_gst, gst_percentage, gst, revenue))
         selected_license = None
         selected_license_type = None
         license_expiry_date = None
@@ -666,7 +725,7 @@ def product_billing(request):
                 expiry_date=license_expiry_date,
                 created_by=request.user,
             )
-        bills = [ProductBilling.objects.create(Customer_Id=customer, Contact_Number=str(data.get("contact_number", "")).strip(), Customer_Name=customer.customer_name or "", Company_Name=customer.company_name or "", License_Details=selected_license.tally_serial_number if selected_license else new_license_serial if is_new_license else str(data.get("license_details", "")).strip(), Product_Id=product, Rate=rate, Quantity=quantity, Amount=amount, Is_External_Renewal=is_external_renewal, Has_GST=has_gst, GST_Percentage=gst_percentage, GST=gst, HSN_Code=product.hsn_code or "", Created_By=request.user) for product, rate, quantity, amount, is_external_renewal, has_gst, gst_percentage, gst in bill_items]
+        bills = [ProductBilling.objects.create(Customer_Id=customer, Contact_Number=str(data.get("contact_number", "")).strip(), Customer_Name=customer.customer_name or "", Company_Name=customer.company_name or "", License_Details=selected_license.tally_serial_number if selected_license else new_license_serial if is_new_license else str(data.get("license_details", "")).strip(), Product_Id=product, Rate=rate, Quantity=quantity, Amount=amount, Revenue_Amount=revenue, Is_External_Renewal=is_external_renewal, Has_GST=has_gst, GST_Percentage=gst_percentage, GST=gst, HSN_Code=product.hsn_code or "", Created_By=request.user) for product, rate, quantity, amount, is_external_renewal, has_gst, gst_percentage, gst, revenue in bill_items]
     return Response({"id": bills[0].Id, "ids": [bill.Id for bill in bills], "detail": f"{len(bills)} product bill{'s' if len(bills) != 1 else ''} saved."}, status=status.HTTP_201_CREATED)
 
 

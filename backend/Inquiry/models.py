@@ -366,6 +366,9 @@ class ProductBilling(models.Model):
     )
     Rate = models.DecimalField(max_digits=12, decimal_places=2, db_column="Rate")
     Amount = models.DecimalField(max_digits=12, decimal_places=2, db_column="Amount")
+    Revenue_Amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True, db_column="Revenue_Amount"
+    )
     Quantity = models.DecimalField(max_digits=10, decimal_places=2, db_column="Quantity")
     Is_External_Renewal = models.BooleanField(default=False, db_column="Is_External_Renewal")
     Has_GST = models.BooleanField(default=False, db_column="Has_GST")
@@ -398,6 +401,13 @@ class ProductBilling(models.Model):
     class Meta:
         db_table = "ProductBilling_tbl"
         ordering = ["-Created_On", "-Id"]
+
+    @property
+    def collection_amount(self):
+        # Bills created before revenue was recorded retain their invoice balance.
+        if self.Revenue_Amount is not None:
+            return self.Revenue_Amount
+        return self.Amount + self.GST
 
 
 class ProductBillingFollowUp(models.Model):

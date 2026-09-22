@@ -484,6 +484,49 @@
     background: linear-gradient(90deg, #fff7f7, #fff);
 }
 
+.dashboard-priority-controls {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.dashboard-staff-filter {
+    display: grid;
+    gap: 4px;
+    width: 240px;
+    max-width: 100%;
+}
+
+.dashboard-staff-filter label {
+    color: #697286;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.dashboard-staff-filter select {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 12px;
+    border: 1px solid #e1e4eb;
+    border-radius: 8px;
+    background: #fff;
+    color: #333c4f;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.dashboard-staff-filter select:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+.dashboard-staff-filter small {
+    color: #b91c1c;
+    font-size: 10px;
+}
+
 .dashboard-priority-kicker {
     display: flex;
     align-items: center;

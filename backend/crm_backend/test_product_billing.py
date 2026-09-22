@@ -92,6 +92,33 @@ class ProductBillingCustomerLookupTests(TestCase):
             }],
         )
 
+    def test_bill_saves_each_product_revenue_amount(self):
+        response = self.client.post("/api/product-billing/", {
+            "customer_id": self.customer.id,
+            "products": [
+                {"product_id": self.product.Id, "rate": "2500", "quantity": "1", "amount": "2500", "revenue_amount": revenue}
+                for revenue in ("500.25", "0.00")
+            ],
+        }, format="json")
+        self.assertEqual(response.status_code, 201)
+        bills = ProductBilling.objects.filter(Id__in=response.data["ids"]).order_by("Id")
+        self.assertEqual([str(bill.Revenue_Amount) for bill in bills], ["500.25", "0.00"])
+        listed = self.client.get("/api/product-billing/").data
+        self.assertEqual(str(next(row for row in listed if row["id"] == bills[0].Id)["revenue_amount"]), "500.25")
+
+    def test_invalid_revenue_rejects_the_whole_bill(self):
+        for revenue in ("-1", "NaN", "Infinity", "abc", "1.001", "10000000000"):
+            with self.subTest(revenue=revenue):
+                response = self.client.post("/api/product-billing/", {
+                    "customer_id": self.customer.id,
+                    "products": [
+                        {"product_id": self.product.Id, "rate": "2500", "quantity": "1", "amount": "2500", "revenue_amount": "100"},
+                        {"product_id": self.product.Id, "rate": "2500", "quantity": "1", "amount": "2500", "revenue_amount": revenue},
+                    ],
+                }, format="json")
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(ProductBilling.objects.count(), 0)
+
     def test_lookup_searches_by_phone_or_company_name(self):
         """Autocomplete results include the contact needed to create a bill."""
         for query in ("9876", "billing company"):
@@ -259,11 +286,31 @@ class ProductBillingCustomerLookupTests(TestCase):
             for row in response.json()
         ))
 
+    def test_pending_product_bills_use_revenue_for_collection_balance(self):
+        for revenue, expected, remaining in (("2400.00", "2400.00", "1400.00"), ("0.00", "0.00", None), (None, "5528.48", "4528.48")):
+            with self.subTest(revenue=revenue):
+                bill = ProductBilling.objects.create(
+                    Customer_Id=self.customer, Product_Id=self.product,
+                    Rate="2536.00", Quantity="2.00", Amount="5072.00",
+                    GST="456.48", Total_Paid="1000.00", Revenue_Amount=revenue,
+                    Created_By=get_user_model().objects.get(username="billing-admin"),
+                )
+                response = self.client.get("/api/inquiries/payment-pending/")
+                self.assertEqual(response.status_code, 200)
+                if remaining is None:
+                    self.assertFalse(any(row["id"] == f"billing-{bill.Id}" for row in response.json()))
+                    continue
+                row = next(row for row in response.json() if row["id"] == f"billing-{bill.Id}")
+                self.assertEqual(row["revenue_amount"], expected)
+                self.assertEqual(row["amount"], "5528.48")
+                self.assertEqual(row["remaining_balance"], remaining)
+
     def test_product_bill_payment_updates_its_pending_balance(self):
         bill = ProductBilling.objects.create(
             Customer_Id=self.customer, Contact_Number="9876543210",
             Customer_Name=self.customer.customer_name, Company_Name=self.customer.company_name,
             Product_Id=self.product, Rate="2500.00", Quantity="1.00", Amount="2500.00",
+            Revenue_Amount="2400.00",
             Created_By=get_user_model().objects.get(username="billing-admin"),
         )
 
@@ -273,6 +320,7 @@ class ProductBillingCustomerLookupTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["remaining_balance"], "1400.00")
         bill.refresh_from_db()
         self.assertEqual(str(bill.Total_Paid), "1000.00")
         self.assertEqual(bill.Payment_Status, "Pending")
@@ -281,8 +329,10 @@ class ProductBillingCustomerLookupTests(TestCase):
         self.assertEqual(approvals.status_code, 200)
         self.assertEqual(len(approvals.json()), 1)
         payment = approvals.json()[0]
+        self.assertEqual(payment["revenue_amount"], "2400.00")
+        self.assertEqual(payment["invoice_amount"], "2500.00")
         self.assertEqual(payment["payment_amount"], "1000.00")
-        self.assertEqual(payment["remaining_balance"], "1500.00")
+        self.assertEqual(payment["remaining_balance"], "1400.00")
         self.assertEqual(payment["company_name"], self.customer.company_name)
         self.assertEqual(payment["product_name"], "TSS")
         self.assertEqual(payment["approval_status"], "Pending")
@@ -296,12 +346,18 @@ class ProductBillingCustomerLookupTests(TestCase):
         report = self.client.get("/api/inquiries/payment-received-details/")
         self.assertEqual(report.status_code, 200)
         self.assertEqual(report.json()[0]["payment_amount"], "1000.00")
+        self.assertEqual(report.json()[0]["revenue_amount"], "2400.00")
         bill.refresh_from_db()
         self.assertEqual(str(bill.Total_Paid), "1000.00")
 
+        overpayment = self.client.post(
+            f"/api/inquiries/payment-pending/billing-{bill.Id}/paid/",
+            {"amount": "1500.00", "payment_type": "installment"}, format="json",
+        )
+        self.assertEqual(overpayment.status_code, 400)
         final = self.client.post(
             f"/api/inquiries/payment-pending/billing-{bill.Id}/paid/",
-            {"amount": "1500.00", "payment_type": "full"}, format="json",
+            {"amount": "1400.00", "payment_type": "full"}, format="json",
         )
         self.assertEqual(final.status_code, 200)
         bill.refresh_from_db()
@@ -313,7 +369,7 @@ class ProductBillingCustomerLookupTests(TestCase):
         self.assertEqual(received.status_code, 200)
         bill.refresh_from_db()
         self.assertEqual(bill.Payment_Status, "Received")
-        self.assertEqual(str(bill.Total_Paid), "2500.00")
+        self.assertEqual(str(bill.Total_Paid), "2400.00")
         duplicate = self.client.post(f"/api/inquiries/payment-approvals/{pending['id']}/received/")
         self.assertEqual(duplicate.status_code, 400)
 

@@ -273,6 +273,8 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const dashboardRole = normalizeRole(user?.role || user?.user_type);
   const isSuperAdmin = dashboardRole === "super admin";
+  const canFilterOverdueByStaff =
+    dashboardRole === "admin" || dashboardRole === "super admin";
   const overdueInquiries = stats.overdueInProgressInquiries || [];
   const filteredOverdueInquiries = overdueInquiries.filter(
     (inquiry) => !overdueStaffId || String(inquiry.Resource_Id) === overdueStaffId,
@@ -1265,23 +1267,25 @@ function Dashboard() {
                     <p>Inquiries still marked In Progress two days after creation.</p>
                   </div>
                   <div className="dashboard-priority-controls">
-                    <div className="dashboard-staff-filter">
-                      <label htmlFor="overdue-staff-filter">Staff</label>
-                      <select
-                        id="overdue-staff-filter"
-                        value={overdueStaffId}
-                        onChange={(event) => setOverdueStaffId(event.target.value)}
-                        aria-describedby={staffFilterError ? "overdue-staff-error" : undefined}
-                      >
-                        <option value="">All staff</option>
-                        {[...overdueStaffOptions.entries()]
-                          .sort((a, b) => a[1].localeCompare(b[1]))
-                          .map(([id, name]) => (
-                            <option key={id} value={id}>{name}</option>
-                          ))}
-                      </select>
-                      {staffFilterError && <small id="overdue-staff-error" role="status">{staffFilterError}</small>}
-                    </div>
+                    {canFilterOverdueByStaff && (
+                      <div className="dashboard-staff-filter">
+                        <label htmlFor="overdue-staff-filter">Staff</label>
+                        <select
+                          id="overdue-staff-filter"
+                          value={overdueStaffId}
+                          onChange={(event) => setOverdueStaffId(event.target.value)}
+                          aria-describedby={staffFilterError ? "overdue-staff-error" : undefined}
+                        >
+                          <option value="">All staff</option>
+                          {[...overdueStaffOptions.entries()]
+                            .sort((a, b) => a[1].localeCompare(b[1]))
+                            .map(([id, name]) => (
+                              <option key={id} value={id}>{name}</option>
+                            ))}
+                        </select>
+                        {staffFilterError && <small id="overdue-staff-error" role="status">{staffFilterError}</small>}
+                      </div>
+                    )}
                     <span className="dashboard-priority-count" aria-live="polite">
                       {filteredOverdueInquiries.length} overdue
                     </span>
